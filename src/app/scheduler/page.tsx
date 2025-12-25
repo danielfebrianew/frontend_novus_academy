@@ -1,21 +1,31 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link" 
 import { format } from "date-fns"
-import { id as idLocale } from "date-fns/locale"
+import { id as idLocale } from "date-fns/locale" 
+
 import toast, { Toaster } from "react-hot-toast"
 import {
-  CalendarClock,
+  Calendar as CalendarIcon,
   CheckCircle2,
-  History,
   Loader2,
   Plus,
   RefreshCw,
   Video,
   XCircle,
+  AlertCircle
 } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
 import {
   Card,
   CardContent,
@@ -47,6 +57,11 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { apiService } from "@/lib/axios"
+import { AccountSelect } from "@/components/common/AccountSelect"
+
+// --- REDUX INTEGRATION ---
+import { useSelector } from "react-redux"
+import { RootState } from "@/store/store"
 
 // --- TIPE DATA ---
 interface SchedulerItem {
@@ -62,37 +77,67 @@ interface SchedulerItem {
 }
 
 interface NewScheduleForm {
-  username: string
   videoUrl: string
   content: string
   productId: string
-  scheduledTime: string
+  scheduledTime: Date | undefined
 }
 
 export default function SchedulerPage() {
-  // Kita pisah state datanya biar ga flicker pas ganti tab
+  // 1. Ambil selectedAccount dari Redux (Bukan local state)
+  const selectedAccount = useSelector((state: RootState) => state.account.selectedAccount)
+  const selectedAccountId = selectedAccount ? selectedAccount.id.toString() : "all"
+
+  // 2. State untuk cek apakah list akun kosong total
+  const [isAccountListEmpty, setIsAccountListEmpty] = useState(false)
+
   const [pendingData, setPendingData] = useState<SchedulerItem[]>([])
   const [doneData, setDoneData] = useState<SchedulerItem[]>([])
   
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("pending") // State untuk tab aktif
+  const [activeTab, setActiveTab] = useState("pending")
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
 
   const [formData, setFormData] = useState<NewScheduleForm>({
-    username: "",
     videoUrl: "",
     content: "",
     productId: "",
-    scheduledTime: "",
+    scheduledTime: new Date(), 
   })
 
-  // --- FETCH DATA (BISA DIPANGGIL SESUAI TAB) ---
+  const [timeValue, setTimeValue] = useState("10:00")
+
+  // --- CHECK ACCOUNTS & FETCH DATA ---
+  
+  // Cek apakah user punya akun sama sekali saat halaman dimuat
+  useEffect(() => {
+    const checkAccountList = async () => {
+        try {
+            const res = await apiService.get<any[]>("/api/v1/accounts")
+            if (res.length === 0) {
+                setIsAccountListEmpty(true)
+            } else {
+                setIsAccountListEmpty(false)
+            }
+        } catch (error) {
+            console.error("Gagal cek akun", error)
+        }
+    }
+    checkAccountList()
+  }, [])
+
+  const getQueryParams = () => {
+    return selectedAccountId !== "all" ? { accountId: selectedAccountId } : {}
+  }
+
   const fetchPending = async () => {
     setLoading(true)
     try {
-      const res = await apiService.get<any>("/api/v1/scheduler/pending")
+      const res = await apiService.get<any>("/api/v1/scheduler/pending", { 
+        params: getQueryParams() 
+      })
       setPendingData(res.data)
     } catch (error) {
       console.error(error)
@@ -105,7 +150,9 @@ export default function SchedulerPage() {
   const fetchHistory = async () => {
     setLoading(true)
     try {
-      const res = await apiService.get<any>("/api/v1/scheduler/done")
+      const res = await apiService.get<any>("/api/v1/scheduler/done", {
+        params: getQueryParams()
+      })
       setDoneData(res.data)
     } catch (error) {
       console.error(error)
@@ -115,34 +162,67 @@ export default function SchedulerPage() {
     }
   }
 
-  // Load awal (default pending)
-  useEffect(() => {
-    fetchPending()
-  }, [])
-
-  // Efek saat ganti tab
   useEffect(() => {
     if (activeTab === "pending") {
       fetchPending()
     } else {
       fetchHistory()
     }
-  }, [activeTab])
+  }, [activeTab, selectedAccountId])
 
-  // --- ACTIONS ---
+  // --- HANDLERS ---
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    if (!selectedDate) return
+    const [hours, minutes] = timeValue.split(":").map(Number)
+    selectedDate.setHours(hours || 0)
+    selectedDate.setMinutes(minutes || 0)
+    selectedDate.setSeconds(0)
+    setFormData({ ...formData, scheduledTime: selectedDate })
+  }
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value
+    setTimeValue(newTime)
+    if (formData.scheduledTime) {
+      const [hours, minutes] = newTime.split(":").map(Number)
+      const newDate = new Date(formData.scheduledTime)
+      newDate.setHours(hours)
+      newDate.setMinutes(minutes)
+      newDate.setSeconds(0)
+      setFormData({ ...formData, scheduledTime: newDate })
+    }
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (selectedAccountId === "all") {
+      toast.error("Mohon pilih akun spesifik terlebih dahulu.")
+      return
+    }
+
+    if (!formData.scheduledTime) {
+      toast.error("Waktu tayang harus diisi.")
+      return
+    }
+
     setSubmitLoading(true)
     try {
-      const isoDate = new Date(formData.scheduledTime).toISOString()
-      const payload = { ...formData, scheduledTime: isoDate, statusPost: "PENDING" }
+      const isoDate = formData.scheduledTime.toISOString()
+      const payload = { 
+        ...formData, 
+        scheduledTime: isoDate, 
+        statusPost: "PENDING",
+        accountId: Number(selectedAccountId),
+      }
       
       await apiService.post("/api/v1/scheduler", payload)
       
       toast.success("Jadwal dibuat!")
       setIsDialogOpen(false)
-      setFormData({ username: "", videoUrl: "", content: "", productId: "", scheduledTime: "" })
-      fetchPending() // Refresh list pending
+      setFormData({ videoUrl: "", content: "", productId: "", scheduledTime: new Date() })
+      setTimeValue("10:00")
+      fetchPending()
     } catch (error) {
       toast.error("Gagal menyimpan.")
     } finally {
@@ -155,14 +235,14 @@ export default function SchedulerPage() {
     toast.promise(promise, {
       loading: 'Mengupdate status...',
       success: () => {
-        fetchPending() // Refresh pending biar itemnya hilang/pindah
+        if (activeTab === "pending") fetchPending()
+        else fetchHistory()
         return `Status diubah jadi ${newStatus}`
       },
       error: 'Gagal update status',
     })
   }
 
-  // Helper render tabel biar ga duplikat codingan
   const renderTable = (data: SchedulerItem[], isHistory: boolean) => {
     if (loading) {
       return (
@@ -175,7 +255,7 @@ export default function SchedulerPage() {
     if (data.length === 0) {
       return (
         <div className="text-center py-10 text-muted-foreground">
-          {isHistory ? "Belum ada postingan selesai." : "Tidak ada antrian pending."}
+          {isHistory ? "Belum ada postingan selesai." : "Tidak ada antrian pending untuk akun ini."}
         </div>
       )
     }
@@ -184,11 +264,10 @@ export default function SchedulerPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[180px]">Waktu Tayang</TableHead>
+            <TableHead className="w-[200px]">Waktu Tayang</TableHead>
             <TableHead>Akun</TableHead>
             <TableHead className="max-w-[300px]">Konten</TableHead>
             <TableHead>Status</TableHead>
-            {/* Kolom Aksi beda antara Pending & History */}
             <TableHead className="text-right">{isHistory ? "Video" : "Aksi"}</TableHead>
           </TableRow>
         </TableHeader>
@@ -213,14 +292,13 @@ export default function SchedulerPage() {
               <TableCell>
                 <Badge 
                   variant={isHistory ? "default" : "outline"}
-                  className={isHistory ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"}
+                  className={isHistory ? "bg-green-100 text-green-700" : "bg-yellow-50 text-yellow-700 border-yellow-200"}
                 >
                   {item.statusPost}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
                 {isHistory ? (
-                  // Tampilan untuk HISTORY (Link Video)
                   <a 
                     href={item.videoUrl} 
                     target="_blank" 
@@ -230,13 +308,11 @@ export default function SchedulerPage() {
                     <Video className="w-3 h-3" /> Lihat
                   </a>
                 ) : (
-                  // Tampilan untuk PENDING (Tombol Aksi)
                   <div className="flex justify-end gap-2">
                     <Button 
                       size="icon" variant="ghost" 
                       className="h-8 w-8 text-green-600 hover:bg-green-100"
                       onClick={() => handleUpdateStatus(item.id, "DONE")}
-                      title="Selesai Manual"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                     </Button>
@@ -244,7 +320,6 @@ export default function SchedulerPage() {
                       size="icon" variant="ghost" 
                       className="h-8 w-8 text-red-600 hover:bg-red-100"
                       onClick={() => handleUpdateStatus(item.id, "CANCELLED")}
-                      title="Batalkan"
                     >
                       <XCircle className="h-4 w-4" />
                     </Button>
@@ -262,59 +337,134 @@ export default function SchedulerPage() {
     <div className="p-6 space-y-6 relative min-h-screen pb-20">
       <Toaster position="top-right" />
 
-      {/* HEADER & CREATE BUTTON */}
+      {/* HEADER & CONTROLS */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Post Scheduler</h1>
           <p className="text-muted-foreground">Manage postingan otomatis TikTok & Video.</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Buat Jadwal Baru
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Jadwal Postingan Baru</DialogTitle>
-              <DialogDescription>Isi detail konten video yang akan dijadwalkan.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 py-4">
-               {/* ... Form Input Sama Seperti Sebelumnya ... */}
-               {/* Agar kode tidak kepanjangan, copy bagian Input Form dari kode sebelumnya kesini */}
-               <div className="space-y-2">
-                  <Label>Username</Label>
-                  <Input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} required />
-               </div>
-               <div className="space-y-2">
-                  <Label>Product ID</Label>
-                  <Input value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value})} required />
-               </div>
-               <div className="space-y-2">
-                  <Label>Waktu</Label>
-                  <Input type="datetime-local" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} required />
-               </div>
-               <div className="space-y-2">
-                  <Label>Video URL</Label>
-                  <Input value={formData.videoUrl} onChange={e => setFormData({...formData, videoUrl: e.target.value})} required />
-               </div>
-               <div className="space-y-2">
-                  <Label>Caption</Label>
-                  <Textarea value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} required />
-               </div>
-               
-               <DialogFooter>
-                <Button type="submit" disabled={submitLoading}>
-                  {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          <div className="w-[200px]">
+             {/* AccountSelect sudah pakai Redux, jadi props dihapus */}
+             <AccountSelect />
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Buat Jadwal
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Jadwal Postingan Baru</DialogTitle>
+                <DialogDescription>
+                  {selectedAccountId === "all" 
+                    ? "Pilih akun terlebih dahulu." 
+                    : "Menambahkan jadwal untuk akun terpilih."}
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* LOGIKA TAMPILAN JIKA AKUN KOSONG / BELUM DIPILIH */}
+              {selectedAccountId === "all" ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+                  {isAccountListEmpty ? (
+                     // KONDISI 1: BELUM ADA AKUN SAMA SEKALI
+                     <>
+                        <div className="bg-orange-50 text-orange-600 p-3 rounded-full">
+                            <AlertCircle className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-lg">Belum Ada Akun</h3>
+                            <p className="text-muted-foreground text-sm max-w-xs mx-auto mt-1">
+                                Anda belum mendaftarkan akun sosial media apapun.
+                            </p>
+                        </div>
+                        <Button asChild variant="default" className="mt-2">
+                           <Link href="/accounts">
+                              <Plus className="mr-2 h-4 w-4" /> Daftarkan Akun Sekarang
+                           </Link>
+                        </Button>
+                     </>
+                  ) : (
+                     // KONDISI 2: ADA AKUN, TAPI BELUM DIPILIH DI DROPDOWN
+                     <>
+                        <div className="bg-red-50 text-red-600 p-3 rounded-full">
+                            <XCircle className="w-8 h-8" />
+                        </div>
+                        <div className="text-red-500 font-medium">
+                            Harap pilih akun spesifik di pojok kanan atas<br/>sebelum membuat jadwal.
+                        </div>
+                     </>
+                  )}
+                </div>
+              ) : (
+                // FORM INPUT (JIKA AKUN SUDAH DIPILIH)
+                <form onSubmit={handleCreate} className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Product ID</Label>
+                    <Input value={formData.productId} onChange={e => setFormData({...formData, productId: e.target.value})} required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Waktu Tayang</Label>
+                    <div className="flex gap-2">
+                         <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !formData.scheduledTime && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {formData.scheduledTime ? (
+                                        format(formData.scheduledTime, "PPP", { locale: idLocale })
+                                    ) : (
+                                        <span>Pilih tanggal</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={formData.scheduledTime}
+                                    onSelect={handleDateSelect}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <Input 
+                            type="time" 
+                            className="w-[120px]"
+                            value={timeValue}
+                            onChange={handleTimeChange}
+                        />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Video URL</Label>
+                    <Input value={formData.videoUrl} onChange={e => setFormData({...formData, videoUrl: e.target.value})} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Caption</Label>
+                    <Textarea value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} required />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={submitLoading}>
+                      {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan
+                    </Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* TABS UTAMA */}
       <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex items-center justify-between mb-4">
           <TabsList className="grid w-full max-w-[400px] grid-cols-2">
@@ -328,26 +478,13 @@ export default function SchedulerPage() {
           </Button>
         </div>
 
-        {/* TAB CONTENT: PENDING */}
         <TabsContent value="pending" className="space-y-4">
-            {/* STATS PENDING */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Pending Posts</CardTitle>
-                    <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{pendingData.length}</div>
-                    <p className="text-xs text-muted-foreground">Menunggu antrian</p>
-                </CardContent>
-                </Card>
-            </div>
-
-            <Card>
+             <Card>
                 <CardHeader>
                     <CardTitle>Antrian Pending</CardTitle>
-                    <CardDescription>Postingan yang akan diproses oleh bot.</CardDescription>
+                    <CardDescription>
+                        {selectedAccountId === "all" ? "Menampilkan semua akun." : `Menampilkan antrian akun: ${selectedAccount?.username}`}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {renderTable(pendingData, false)}
@@ -355,21 +492,7 @@ export default function SchedulerPage() {
             </Card>
         </TabsContent>
 
-        {/* TAB CONTENT: HISTORY */}
         <TabsContent value="history" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Selesai</CardTitle>
-                    <History className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{doneData.length}</div>
-                    <p className="text-xs text-muted-foreground">Berhasil diposting</p>
-                </CardContent>
-                </Card>
-            </div>
-
             <Card>
                 <CardHeader>
                     <CardTitle>Log Riwayat</CardTitle>

@@ -1,24 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react" // Tambahkan useEffect
+import { useState, useEffect } from "react"
 import axios from "axios"
 import { Upload, FileVideo, FileAudio, X, Loader2, CheckCircle2, Film } from "lucide-react"
 import toast, { Toaster } from "react-hot-toast"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function VideoMixerPage() {
-  // --- FIX HYDRATION ERROR START ---
-  // Kita tambahkan state untuk memastikan komponen sudah dimuat di browser
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
-  // --- FIX HYDRATION ERROR END ---
 
   const [loading, setLoading] = useState(false)
   const [videoFiles, setVideoFiles] = useState<File[]>([])

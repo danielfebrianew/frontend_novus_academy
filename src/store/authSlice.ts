@@ -3,7 +3,8 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 
 // 1. Tambahkan id dan avatar agar sesuai kebutuhan UI & Database
 interface User {
-  id: string | number
+  id: number
+  username: string
   name: string
   email: string
   avatar?: string // Optional, jaga-jaga kalau user belum upload foto
