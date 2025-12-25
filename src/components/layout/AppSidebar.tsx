@@ -19,9 +19,15 @@ import {
   LayoutDashboard,
   ChevronRight,
   ChevronsUpDown,
-  BadgeCheck,
-  Bell,
   LogOut,
+  User,
+  PieChart,
+  TrendingUp,
+  FileBarChart,
+  LineChart,
+  Wallet,
+  Radio,
+  Activity,
 } from "lucide-react"
 import {
   Avatar,
@@ -56,53 +62,69 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
 import Cookies from "js-cookie"
 import { logout } from "@/store/authSlice"
 import { RootState } from "@/store/store"
+import { toggleSection, setSectionOpen } from "@/store/sidebarSlice"
 
 const navMain = [
   {
     title: "Nova Playground",
+    id: "playground",
     url: "#",
     icon: Sparkles,
-    isActive: true,
     items: [
       { title: "Generator", url: "/generate", icon: Wand2 },
       { title: "Video Mixer", url: "/video-mixer", icon: Shuffle },
-      { title: "Editor (Canvas)", url: "#", icon: Frame },
+      { title: "Editor (Canvas)", url: "/editor", icon: Frame },
     ],
   },
   {
     title: "My Workspace",
+    id: "workspace",
     url: "#",
     icon: FolderOpen,
-    isActive: true,
     items: [
-      { title: "All Projects", url: "#", icon: Folder },
-      { title: "Assets Library", url: "#", icon: ImageIcon },
+      { title: "All Projects", url: "/projects", icon: Folder },
+      { title: "Assets Library", url: "/assets", icon: ImageIcon },
       { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
-      { title: "Prompt Library", url: "#", icon: FileText },
-      { title: "History", url: "#", icon: History },
+      { title: "Prompt Library", url: "/prompts", icon: FileText },
+      { title: "History", url: "/history", icon: History },
+    ],
+  },
+  {
+    title: "Reports",
+    id: "reports", // Jangan lupa tambahkan 'reports': true di sidebarSlice.ts (defaultState)
+    url: "#",
+    icon: LineChart,
+    items: [
+      { title: "Earnings & Commission", url: "/reports/earnings", icon: Wallet }, // Mapping: revenue, est_komisi, base_revenue
+      { title: "Traffic & Sales", url: "/reports/performance", icon: Activity }, // Mapping: view, click, sold
+      { title: "Live vs Video", url: "/reports/attribution", icon: Radio }, // Mapping: live_revenue vs video_revenue
     ],
   },
   {
     title: "Settings",
+    id: "settings",
     url: "#",
     icon: Settings,
     items: [
       { title: "Tiktok Accounts", url: "/accounts", icon: Users },
-      { title: "Billing & Usage", url: "#", icon: CreditCard },
-      { title: "Team Members", url: "#", icon: Users },
+      { title: "Billing & Usage", url: "/billing", icon: CreditCard },
+      { title: "Team Members", url: "/team", icon: Users },
     ],
   },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
+  const pathname = usePathname()
   const dispatch = useDispatch()
+  
   const { user } = useSelector((state: RootState) => state.auth)
+  const expandedSections = useSelector((state: RootState) => state.sidebar?.expandedSections || {})
 
   const userData = {
     name: user?.username || user?.name || "Guest",
@@ -111,6 +133,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     initials: user?.username ? user.username.substring(0, 2).toUpperCase() : "CN"
   }
 
+  React.useEffect(() => {
+    navMain.forEach((section) => {
+      const isActive = section.items.some((item) => pathname.startsWith(item.url) && item.url !== "#")
+      
+      if (isActive && !expandedSections[section.id]) {
+        dispatch(setSectionOpen({ id: section.id, isOpen: true }))
+      }
+    })
+  }, [pathname, dispatch, expandedSections])
+
   const handleLogout = async () => {
     try {
       const token = Cookies.get("accessToken")
@@ -118,11 +150,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         await axios.post(
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/logout`,
           {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         )
       }
     } catch (error) {
@@ -142,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Dashboard">
+              <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/dashboard"}>
                 <a href="/dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
@@ -155,38 +183,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarMenu>
-            {navMain.map((item) => (
-              <Collapsible
-                key={item.title}
-                asChild
-                defaultOpen={item.isActive}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title}>
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items?.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <a href={subItem.url}>
-                              {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 opacity-70" />}
-                              <span>{subItem.title}</span>
-                            </a>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            ))}
+            {navMain.map((item) => {
+                const isOpen = expandedSections[item.id] ?? true
+
+                return (
+                  <Collapsible
+                    key={item.title}
+                    asChild
+                    open={isOpen}
+                    onOpenChange={() => dispatch(toggleSection(item.id))}
+                    className="group/collapsible"
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip={item.title}>
+                          {item.icon && <item.icon />}
+                          <span>{item.title}</span>
+                          <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.items?.map((subItem) => (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                                <a href={subItem.url}>
+                                  {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 opacity-70" />}
+                                  <span>{subItem.title}</span>
+                                </a>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )
+            })}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -230,28 +263,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
                 <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Upgrade to Pro
+                  <DropdownMenuItem onClick={() => router.push("/dashboard/settings/profile")} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
+                
                 <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <BadgeCheck className="mr-2 h-4 w-4" />
-                    Account
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Billing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Notifications
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
+                
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
