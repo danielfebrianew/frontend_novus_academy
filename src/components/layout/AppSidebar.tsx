@@ -21,12 +21,7 @@ import {
   ChevronsUpDown,
   LogOut,
   User,
-  PieChart,
-  TrendingUp,
-  FileBarChart,
   LineChart,
-  Wallet,
-  Radio,
   Activity,
 } from "lucide-react"
 import {
@@ -100,9 +95,7 @@ const navMain = [
     url: "#",
     icon: LineChart,
     items: [
-      { title: "Earnings & Commission", url: "/reports/earnings", icon: Wallet }, // Mapping: revenue, est_komisi, base_revenue
-      { title: "Traffic & Sales", url: "/reports/performance", icon: Activity }, // Mapping: view, click, sold
-      { title: "Live vs Video", url: "/reports/attribution", icon: Radio }, // Mapping: live_revenue vs video_revenue
+      { title: "Earnings & Commission", url: "/reports", icon: Activity }, // Mapping: revenue, est_komisi, base_revenue
     ],
   },
   {

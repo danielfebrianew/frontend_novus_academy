@@ -4,12 +4,14 @@ import authReducer from './authSlice';
 import accountReducer from './accountSlice';
 import sidebarReducer from './sidebarSlice';
 import videoGeneratorReducer from './videoGeneratorSlice';
+import reportReducer from './reportSlice';
 
 export const store = configureStore({
     reducer: {
         auth: authReducer,
         account: accountReducer,
         sidebar: sidebarReducer,
+        report: reportReducer,
         videoGenerator: videoGeneratorReducer,
     },
 });
