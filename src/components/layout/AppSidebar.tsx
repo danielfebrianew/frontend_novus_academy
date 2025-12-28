@@ -6,17 +6,13 @@ import {
   Sparkles,
   Wand2,
   Shuffle,
-  Frame,
   FolderOpen,
-  Folder,
   ImageIcon,
   CalendarClock,
   FileText,
-  History,
   Settings,
   Users,
   CreditCard,
-  LayoutDashboard,
   ChevronRight,
   ChevronsUpDown,
   LogOut,
@@ -39,7 +35,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -48,7 +43,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -71,9 +65,9 @@ const navMain = [
     url: "#",
     icon: Sparkles,
     items: [
-      { title: "Generator", url: "/generate", icon: Wand2 },
+      { title: "AI Generator", url: "/generate", icon: Wand2 },
       { title: "Video Mixer", url: "/video-mixer", icon: Shuffle },
-      { title: "Editor (Canvas)", url: "/editor", icon: Frame },
+      // { title: "Editor (Canvas)", url: "/editor", icon: Frame },
     ],
   },
   {
@@ -82,11 +76,9 @@ const navMain = [
     url: "#",
     icon: FolderOpen,
     items: [
-      { title: "All Projects", url: "/projects", icon: Folder },
       { title: "Assets Library", url: "/assets", icon: ImageIcon },
       { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
-      { title: "Prompt Library", url: "/prompts", icon: FileText },
-      { title: "History", url: "/history", icon: History },
+      { title: "Caption Creation", url: "/prompts", icon: FileText },
     ],
   },
   {
@@ -95,7 +87,7 @@ const navMain = [
     url: "#",
     icon: LineChart,
     items: [
-      { title: "Earnings & Commission", url: "/reports", icon: Activity }, // Mapping: revenue, est_komisi, base_revenue
+      { title: "Revenue", url: "/reports", icon: Activity }, // Mapping: revenue, est_komisi, base_revenue
     ],
   },
   {
@@ -106,7 +98,6 @@ const navMain = [
     items: [
       { title: "Tiktok Accounts", url: "/accounts", icon: Users },
       { title: "Billing & Usage", url: "/billing", icon: CreditCard },
-      { title: "Team Members", url: "/team", icon: Users },
     ],
   },
 ]
@@ -115,7 +106,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
   const pathname = usePathname()
   const dispatch = useDispatch()
-  
+
   const { user } = useSelector((state: RootState) => state.auth)
   const expandedSections = useSelector((state: RootState) => state.sidebar?.expandedSections || {})
 
@@ -129,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => {
     navMain.forEach((section) => {
       const isActive = section.items.some((item) => pathname.startsWith(item.url) && item.url !== "#")
-      
+
       if (isActive && !expandedSections[section.id]) {
         dispatch(setSectionOpen({ id: section.id, isOpen: true }))
       }
@@ -162,56 +153,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/dashboard"}>
-                <a href="/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
-          <SidebarMenu>
             {navMain.map((item) => {
-                const isOpen = expandedSections[item.id] ?? true
+              const isOpen = expandedSections[item.id] ?? false
 
-                return (
-                  <Collapsible
-                    key={item.title}
-                    asChild
-                    open={isOpen}
-                    onOpenChange={() => dispatch(toggleSection(item.id))}
-                    className="group/collapsible"
-                  >
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton tooltip={item.title}>
-                          {item.icon && <item.icon />}
-                          <span>{item.title}</span>
-                          <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {item.items?.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                                <a href={subItem.url}>
-                                  {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 opacity-70" />}
-                                  <span>{subItem.title}</span>
-                                </a>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                )
+              return (
+                <Collapsible
+                  key={item.title}
+                  asChild
+                  open={isOpen}
+                  onOpenChange={() => dispatch(toggleSection(item.id))}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip={item.title}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {item.items?.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                              <a href={subItem.url}>
+                                {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 opacity-70" />}
+                                <span>{subItem.title}</span>
+                              </a>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )
             })}
           </SidebarMenu>
         </SidebarGroup>
@@ -243,29 +220,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={userData.avatar} alt={userData.name} />
-                      <AvatarFallback className="rounded-lg">{userData.initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{userData.name}</span>
-                      <span className="truncate text-xs">{userData.email}</span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={() => router.push("/dashboard/settings/profile")} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
-                
+
                 <DropdownMenuSeparator />
-                
+
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out

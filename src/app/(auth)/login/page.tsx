@@ -8,10 +8,8 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { apiService } from "@/lib/axios"
 import toast from "react-hot-toast"
-
 import { useDispatch } from "react-redux"
 import { setUser } from "@/store/authSlice"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -34,7 +32,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 
 const formSchema = z.object({
   email: z.email("Email tidak valid"),
-  password: z.string().min(1, "Password wajib diisi"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
 })
 
 export default function LoginPage() {
@@ -59,7 +57,9 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    const loadingToast = toast.loading("Sedang masuk...")
+    
+    // 2. Simpan ID toast loading agar bisa di-dismiss spesifik
+    const loadingToastId = toast.loading("Sedang memverifikasi akun...")
 
     try {
       const result = await apiService.post<any>("/api/v1/auth/login", values)
@@ -72,16 +72,38 @@ export default function LoginPage() {
 
       dispatch(setUser(user))
 
-      toast.dismiss(loadingToast)
-      toast.success("Login Berhasil!")
+      // 3. Login Sukses
+      toast.dismiss(loadingToastId) // Hapus loading
+      toast.success(`Selamat datang, ${user.name || 'User'}!`)
 
       router.push("/generate")
       router.refresh()
 
     } catch (error: any) {
-      toast.dismiss(loadingToast)
-      const msg = error.response?.data?.message || "Login gagal."
-      toast.error(msg)
+      toast.dismiss(loadingToastId) 
+      
+      let errorMessage = "Terjadi kesalahan pada server."
+
+      if (error.response) {
+        errorMessage = error.response.data?.message || errorMessage;
+
+        if (error.response.status === 401 || error.response.status === 400) {
+            if (!error.response.data?.message) {
+                errorMessage = "Email atau password salah."; 
+            }
+        } else if (error.response.status === 429) {
+            errorMessage = "Terlalu banyak percobaan. Coba lagi nanti.";
+        } else if (error.response.status === 500) {
+            errorMessage = "Server sedang bermasalah. Hubungi admin.";
+        }
+      } else if (error.request) {
+        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet.";
+      }
+
+      toast.error(errorMessage, {
+        duration: 4000, // Tampil agak lama biar user sempat baca
+      })
+      
     } finally {
       setIsLoading(false)
     }

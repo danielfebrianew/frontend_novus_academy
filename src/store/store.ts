@@ -5,6 +5,7 @@ import accountReducer from './accountSlice';
 import sidebarReducer from './sidebarSlice';
 import videoGeneratorReducer from './videoGeneratorSlice';
 import reportReducer from './reportSlice';
+import videoMixerReducer from './videoMixerSlice';
 
 export const store = configureStore({
     reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
         sidebar: sidebarReducer,
         report: reportReducer,
         videoGenerator: videoGeneratorReducer,
+        videoMixer: videoMixerReducer,
     },
 });
 

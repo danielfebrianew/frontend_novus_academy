@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import axios from "axios"
-import { Upload, FileVideo, FileAudio, X, Loader2, CheckCircle2, Film } from "lucide-react"
+import { Upload, FileVideo, FileAudio, X, Loader2, CheckCircle2, Film, FolderOutput } from "lucide-react"
 import toast, { Toaster } from "react-hot-toast"
+import { useDispatch, useSelector } from "react-redux"
+import { RootState } from "@/store/store"
+import { setOutputDirectory } from "@/store/videoMixerSlice"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +14,9 @@ import { Label } from "@/components/ui/label"
 
 export default function VideoMixerPage() {
   const [isMounted, setIsMounted] = useState(false)
+  const dispatch = useDispatch()
+
+  const savedOutputPath = useSelector((state: RootState) => state.videoMixer?.outputDirectory || "")
 
   useEffect(() => {
     setIsMounted(true)
@@ -19,7 +25,7 @@ export default function VideoMixerPage() {
   const [loading, setLoading] = useState(false)
   const [videoFiles, setVideoFiles] = useState<File[]>([])
   const [audioFile, setAudioFile] = useState<File | null>(null)
-  
+
   // State baru sesuai backend
   const [variations, setVariations] = useState<number>(1)
   const [generatedPaths, setGeneratedPaths] = useState<string[]>([])
@@ -37,7 +43,7 @@ export default function VideoMixerPage() {
 
       const validVideos = newFiles.filter(file => file.type.startsWith("video/"))
       if (validVideos.length !== newFiles.length) {
-        toast.error("Beberapa file bukan video dan diabaikan.")
+        toast.error("Beberapa file bukan video")
       }
 
       setVideoFiles((prev) => [...prev, ...validVideos])
@@ -56,15 +62,23 @@ export default function VideoMixerPage() {
     }
   }
 
+  const handlePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    dispatch(setOutputDirectory(e.target.value))
+  }
+
   // 4. SUBMIT PROSES
   const handleSubmit = async () => {
-    // Validasi Constraints Backend
     if (videoFiles.length < 2) {
       toast.error("Minimal harus upload 2 video!")
       return
     }
     if (!audioFile) {
       toast.error("Wajib upload 1 file audio!")
+      return
+    }
+
+    if (!savedOutputPath || savedOutputPath.trim() === "") {
+      toast.error("Mohon isi lokasi folder penyimpanan (Output Path)!")
       return
     }
 
@@ -75,16 +89,14 @@ export default function VideoMixerPage() {
     try {
       const formData = new FormData()
 
-      // Append Videos (Key: 'clips' sesuai Controller NestJS)
-      videoFiles.forEach((file) => {
-        formData.append("clips", file) 
-      })
-
-      // Append Audio (Key: 'audio')
-      formData.append("audio", audioFile)
-
-      // Append Variations (Key: 'variations')
       formData.append("variations", variations.toString())
+      formData.append("outputDir", savedOutputPath)
+
+      videoFiles.forEach((file) => {
+        formData.append("clips", file)
+      })
+      
+      formData.append("audio", audioFile)
 
       // --- REQUEST AXIOS ---
       // Note: Backend kita return JSON berisi path, bukan Blob ZIP
@@ -95,7 +107,7 @@ export default function VideoMixerPage() {
 
       // Handle Success
       if (response.data.success) {
-        toast.success("Video berhasil di-stitch!")
+        toast.success("Video berhasil digabungkan!")
         setGeneratedPaths(response.data.files) // Simpan path untuk ditampilkan
       }
 
@@ -109,8 +121,6 @@ export default function VideoMixerPage() {
     }
   }
 
-  // --- FIX HYDRATION ERROR CHECK ---
-  // Mencegah render HTML sebelum client siap
   if (!isMounted) {
     return null
   }
@@ -126,7 +136,7 @@ export default function VideoMixerPage() {
             Video Mixer
           </CardTitle>
           <CardDescription>
-            Upload klip video & audio. NovaMix akan memprosesnya di laptopmu.
+            Upload klip video & audio. Tentukan folder penyimpanan lokal.
           </CardDescription>
         </CardHeader>
         
@@ -134,7 +144,7 @@ export default function VideoMixerPage() {
           
           {/* --- INPUT VIDEOS --- */}
           <div className="space-y-2">
-            <Label>Upload Video Clips (Max 6)</Label>
+            <Label>1. Upload Video Clips (Min 2, Max 6)</Label>
             <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition cursor-pointer relative group">
               <Input 
                 type="file" 
@@ -151,17 +161,14 @@ export default function VideoMixerPage() {
               <p className="text-xs text-slate-400 mt-1">{videoFiles.length} / 6 file terpilih</p>
             </div>
 
-            {/* List Video Terpilih */}
+            {/* List Video */}
             {videoFiles.length > 0 && (
               <div className="grid grid-cols-1 gap-2 mt-4">
                 {videoFiles.map((file, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 bg-slate-100 rounded-md border text-sm">
                     <div className="flex items-center truncate gap-3">
-                      <div className="bg-slate-200 p-1 rounded">
-                         <FileVideo className="h-4 w-4 text-slate-600" />
-                      </div>
+                      <div className="bg-slate-200 p-1 rounded"><FileVideo className="h-4 w-4 text-slate-600" /></div>
                       <span className="truncate max-w-[200px] font-medium text-slate-700">{file.name}</span>
-                      <span className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-100 hover:text-red-600" onClick={() => removeVideo(idx)} disabled={loading}>
                       <X className="h-4 w-4" />
@@ -175,18 +182,15 @@ export default function VideoMixerPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* --- INPUT AUDIO --- */}
             <div className="space-y-2">
-              <Label>Background Audio</Label>
-              <div className="relative">
-                <Input 
-                  type="file" 
-                  accept="audio/*" 
-                  onChange={handleAudioChange}
-                  disabled={loading}
-                  className="cursor-pointer"
-                />
-              </div>
+              <Label>2. Background Audio</Label>
+              <Input 
+                type="file" 
+                accept="audio/*" 
+                onChange={handleAudioChange}
+                disabled={loading}
+              />
               {audioFile && (
-                 <div className="flex items-center p-2 bg-green-50 text-green-700 rounded text-sm border border-green-200 mt-2">
+                 <div className="flex items-center p-2 bg-green-50 text-green-700 rounded text-sm border border-green-200 mt-1">
                     <FileAudio className="h-4 w-4 mr-2" />
                     <span className="truncate">{audioFile.name}</span>
                  </div>
@@ -195,7 +199,7 @@ export default function VideoMixerPage() {
 
             {/* --- INPUT VARIATIONS --- */}
             <div className="space-y-2">
-              <Label>Jumlah Variasi Output</Label>
+              <Label>3. Jumlah Variasi</Label>
               <Input 
                 type="number" 
                 min={1} 
@@ -204,26 +208,44 @@ export default function VideoMixerPage() {
                 onChange={(e) => setVariations(parseInt(e.target.value) || 1)}
                 disabled={loading}
               />
-              <p className="text-[10px] text-slate-500">Berapa banyak video unik yang ingin dibuat?</p>
             </div>
+          </div>
+
+          {/* --- NEW: INPUT OUTPUT PATH --- */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+             <div className="flex items-center gap-2">
+                <FolderOutput className="w-5 h-5 text-slate-600" />
+                <Label className="font-semibold text-slate-700">4. Lokasi Penyimpanan (Wajib)</Label>
+             </div>
+             <p className="text-xs text-slate-500">
+               Copy-paste path folder laptop tempat file akan disimpan. <br/>
+               Contoh Windows: <code className="bg-slate-200 px-1 rounded">D:\MyProjects\Videos\Output</code><br/>
+               Contoh Mac/Linux: <code className="bg-slate-200 px-1 rounded">/Users/budi/Desktop/Result</code>
+             </p>
+             <Input 
+                type="text"
+                placeholder="Paste absolute path folder disini..."
+                value={savedOutputPath}
+                onChange={handlePathChange}
+                disabled={loading}
+                className="bg-white"
+             />
           </div>
 
           {/* --- SUBMIT BUTTON --- */}
           <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4" 
             size="lg" 
             onClick={handleSubmit} 
-            disabled={loading || videoFiles.length < 2 || !audioFile}
+            disabled={loading || videoFiles.length < 2 || !audioFile || !savedOutputPath}
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sedang Memproses di Laptop...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sedang Memproses...
               </>
             ) : (
               <>
-                <Film className="mr-2 h-4 w-4" />
-                Mulai Mixing
+                <Film className="mr-2 h-4 w-4" /> Mulai Mixing
               </>
             )}
           </Button>
@@ -233,9 +255,8 @@ export default function VideoMixerPage() {
             <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg animate-in fade-in slide-in-from-bottom-4">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="text-green-600 h-5 w-5"/>
-                <h3 className="font-semibold text-green-800">Proses Selesai!</h3>
+                <h3 className="font-semibold text-green-800">Selesai! File tersimpan di:</h3>
               </div>
-              <p className="text-sm text-green-700 mb-2">File tersimpan di folder laptop lokal:</p>
               <ul className="space-y-1">
                 {generatedPaths.map((path, i) => (
                   <li key={i} className="text-xs font-mono bg-white p-2 rounded border border-green-100 text-slate-600 break-all">

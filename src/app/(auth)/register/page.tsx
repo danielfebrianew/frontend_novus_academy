@@ -33,7 +33,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 
 const formSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),
-  email: z.string().email("Email tidak valid"), // Fix: z.string().email()
+  email: z.email("Email tidak valid"), 
   password: z.string().min(6, "Password minimal 6 karakter"),
   phoneNumber: z.string().optional(),
 })
@@ -62,14 +62,11 @@ export default function RegisterPage() {
     const loadingToast = toast.loading("Mendaftarkan akun...")
 
     try {
-      // 2. Gunakan apiService.post
-      // URL cukup path relatif, tidak perlu http://localhost...
       await apiService.post("/api/v1/auth/register", values)
       
       toast.dismiss(loadingToast)
       toast.success("Akun berhasil dibuat! Silakan login.")
       
-      // Redirect ke halaman login (pastikan path sesuai struktur folder kamu)
       router.push("/login") 
       
     } catch (error: any) {
