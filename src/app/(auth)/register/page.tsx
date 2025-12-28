@@ -140,8 +140,8 @@ export default function RegisterPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Loading..." : "Daftar Sekarang"}
+              <Button type="submit" className="w-full bg-blue-600 text-white" disabled={isLoading}>
+                {isLoading ? "Loading..." : "Daftar"}
               </Button>
             </form>
           </Form>

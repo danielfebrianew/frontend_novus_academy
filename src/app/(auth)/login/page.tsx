@@ -129,7 +129,7 @@ export default function LoginPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-blue-600 text-white" disabled={isLoading}>
                 {isLoading ? "Loading..." : "Masuk"}
               </Button>
             </form>

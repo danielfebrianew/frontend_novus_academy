@@ -120,10 +120,10 @@ export default function VideoMixerPage() {
       <Toaster position="top-center" />
       
       <Card className="shadow-lg border-slate-200">
-        <CardHeader className="bg-slate-50 border-b">
+        <CardHeader className="bg-white border-b">
           <CardTitle className="text-2xl flex items-center gap-2">
             <Film className="w-6 h-6 text-blue-600"/>
-            NovaMix Video Mixer
+            Video Mixer
           </CardTitle>
           <CardDescription>
             Upload klip video & audio. NovaMix akan memprosesnya di laptopmu.
