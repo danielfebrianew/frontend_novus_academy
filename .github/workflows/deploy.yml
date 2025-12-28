@@ -36,7 +36,7 @@ jobs:
             npm run build
 
             npm ci --omit=dev
-            pm2 reload frontend --silent
+            pm2 reload frontend --update-env --silent
 
             exit
           "
