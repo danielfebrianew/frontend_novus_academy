@@ -7,7 +7,7 @@ export interface ApiResponse<T = any> {
 }
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://api.novusnextgen.com",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
