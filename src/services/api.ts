@@ -8,7 +8,7 @@ import {
 } from "@/types/api";
 
 // Sesuai endpoint kamu: {{baseURL}}/api/v1/generate
-const API_BASE_URL = "http://localhost:3000/api/v1/generate";
+const API_BASE_URL = "https://api.novusnextgen.com/api/v1/generate";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
