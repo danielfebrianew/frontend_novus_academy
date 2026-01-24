@@ -1,18 +1,23 @@
 // types/api.ts
 
-export interface UploadResponse {
-  data: {
-    imageUrls: string[];
-  };
+// Interface umum untuk response API
+export interface ApiResponse<T = any> {
+  statusCode: number;
+  message: string;
+  data: T;
 }
+
+export interface UploadResponse extends ApiResponse<{
+  imageUrls: string[];
+}> {}
 
 export interface AnalyzeRequest {
   imageUrl: string;
   productName: string;
-  promptCount?: number; // Field baru untuk menentukan jumlah prompt (4, 5, atau 6)
+  promptCount?: number; // Field untuk menentukan jumlah prompt (4, 5, atau 6)
 }
 
-// Interface baru untuk struktur komponen caption dari Backend
+// Interface untuk struktur komponen caption dari Backend
 export interface CaptionComponents {
   hooks: string[];
   bodies: string[];
@@ -20,13 +25,11 @@ export interface CaptionComponents {
   hashtags: string[][]; // Array of Array string (karena hashtags dikelompokkan per set)
 }
 
-export interface AnalyzeResponse {
-  data: {
-    voiceover: string;
-    videoPrompts: string[];
-    captionComponents: CaptionComponents; // Menggantikan tiktokCaption
-  };
-}
+export interface AnalyzeResponse extends ApiResponse<{
+  voiceover: string;
+  videoPrompts: string[];
+  captionComponents: CaptionComponents;
+}> {}
 
 export interface GenerateVideoRequest {
   images: string[];
@@ -37,15 +40,11 @@ export interface GenerateVideoRequest {
   voiceGender: string;
 }
 
-export interface GenerateVideoResponse {
-  // Kita sesuaikan dengan backend yang mengembalikan object { variations: [...] }
-  // Namun karena format types ini menggunakan wrapper 'data' (Axios style), kita pertahankan strukturnya.
-  data: {
-    variations: string[];
-    jobId?: string;
-    totalVariations?: number;
-  };
-}
+export interface GenerateVideoResponse extends ApiResponse<{
+  variations: string[];
+  jobId?: string;
+  totalVariations?: number;
+}> {}
 
 // Tipe untuk Progress SSE
 export interface ProgressData {

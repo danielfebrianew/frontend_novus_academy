@@ -50,8 +50,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-// Import api wrapper
-import { apiService } from "@/lib/axios"
+// ✅ Import api wrapper (fetch)
+import { apiService } from "@/lib/fetch"
 
 // --- TIPE DATA ---
 interface Account {
@@ -59,17 +59,17 @@ interface Account {
   username: string
   email: string
   status: string
-  cookie?: string // Tambahkan ini agar bisa prefill saat edit
+  cookie?: string
   createdAt: string
 }
 
 // Schema Validasi Tambah/Edit Akun
 const accountSchema = z.object({
   username: z.string().min(3, "Username minimal 3 karakter"),
-  email: z.email("Email tidak valid").optional().or(z.literal("")),
+  email: z.string().email("Email tidak valid").optional().or(z.literal("")),
   password: z.string().optional(), 
   cookie: z.string().optional(),
-  status: z.string().optional(), // Status bisa diedit
+  status: z.string().optional(),
 })
 
 export default function AccountsPage() {
@@ -103,7 +103,7 @@ export default function AccountsPage() {
     defaultValues: {
       username: "",
       email: "",
-      password: "", // Password kosongkan defaultnya (biar gak ketimpa kalau user gak ngisi)
+      password: "",
       cookie: "",
       status: "ACTIVE"
     },
@@ -113,11 +113,16 @@ export default function AccountsPage() {
   const fetchAccounts = async () => {
     setLoading(true)
     try {
-      const res = await apiService.get<Account[]>("/api/v1/accounts")
-      setAccounts(res)
-    } catch (error) {
+      // ✅ apiService.get sudah return data langsung
+      const res = await apiService.get<{ data: Account[] }>("/api/v1/accounts")
+      
+      // ✅ Sesuaikan dengan struktur response backend
+      // Jika backend return { data: [...] }, gunakan res.data
+      // Jika backend return langsung array, gunakan res
+      setAccounts(res.data || res)
+    } catch (error: any) {
       console.error(error)
-      toast.error("Gagal memuat daftar akun.")
+      toast.error(error.message || "Gagal memuat daftar akun.")
     } finally {
       setLoading(false)
     }
@@ -130,35 +135,53 @@ export default function AccountsPage() {
   // --- CREATE ACTION ---
   const onCreateSubmit = async (values: z.infer<typeof accountSchema>) => {
     setSubmitLoading(true)
+    const loadingToastId = toast.loading("Menambahkan akun...")
+    
     try {
       await apiService.post("/api/v1/accounts", {
         ...values,
         status: "ACTIVE" 
       })
 
+      toast.dismiss(loadingToastId)
       toast.success("Akun berhasil ditambahkan!")
       setIsCreateOpen(false)
       formCreate.reset()
       fetchAccounts() 
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Gagal menambah akun"
-      toast.error(msg)
+      toast.dismiss(loadingToastId)
+      
+      // ✅ Error handling untuk fetch API
+      let errorMessage = "Gagal menambah akun"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // Deteksi error spesifik
+        if (error.message.includes("409")) {
+          errorMessage = "Username sudah digunakan"
+        } else if (error.message.includes("400")) {
+          errorMessage = error.message.includes("HTTP error") 
+            ? "Data tidak valid" 
+            : error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setSubmitLoading(false)
     }
   }
 
   // --- PREPARE EDIT ---
-  // Fungsi ini dipanggil saat tombol Edit diklik
   const handleEditClick = (account: Account) => {
     setEditingId(account.id)
-    // Isi form edit dengan data yang ada
     formEdit.reset({
-        username: account.username,
-        email: account.email || "",
-        password: "", // Password dikosongkan (user isi cuma kalau mau ganti)
-        cookie: account.cookie || "", // Pastikan backend return cookie kalau mau diedit, atau kosongkan
-        status: account.status
+      username: account.username,
+      email: account.email || "",
+      password: "",
+      cookie: account.cookie || "",
+      status: account.status
     })
     setIsEditOpen(true)
   }
@@ -168,19 +191,40 @@ export default function AccountsPage() {
     if (!editingId) return
 
     setSubmitLoading(true)
+    const loadingToastId = toast.loading("Memperbarui akun...")
+    
     try {
-      // Hapus field password jika kosong agar tidak mereset password lama di DB
+      // Hapus field password jika kosong
       const payload: any = { ...values }
       if (!payload.password) delete payload.password
 
       await apiService.patch(`/api/v1/accounts/${editingId}`, payload)
 
+      toast.dismiss(loadingToastId)
       toast.success("Akun berhasil diperbarui!")
       setIsEditOpen(false)
       fetchAccounts()
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Gagal update akun"
-      toast.error(msg)
+      toast.dismiss(loadingToastId)
+      
+      // ✅ Error handling untuk fetch API
+      let errorMessage = "Gagal update akun"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        if (error.message.includes("404")) {
+          errorMessage = "Akun tidak ditemukan"
+        } else if (error.message.includes("409")) {
+          errorMessage = "Username sudah digunakan"
+        } else if (error.message.includes("400")) {
+          errorMessage = error.message.includes("HTTP error") 
+            ? "Data tidak valid" 
+            : error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setSubmitLoading(false)
     }
@@ -188,15 +232,29 @@ export default function AccountsPage() {
 
   // --- DELETE ACTION ---
   const handleDelete = async (id: number) => {
-    if(!confirm("Yakin ingin menghapus akun ini? Jadwal terkait mungkin akan error.")) return;
+    if (!confirm("Yakin ingin menghapus akun ini? Jadwal terkait mungkin akan error.")) return
 
     const toastId = toast.loading("Menghapus...")
+    
     try {
-        await apiService.delete(`/api/v1/accounts/${id}`)
-        toast.success("Akun dihapus", { id: toastId })
-        fetchAccounts()
-    } catch (error) {
-        toast.error("Gagal menghapus", { id: toastId })
+      await apiService.delete(`/api/v1/accounts/${id}`)
+      toast.success("Akun berhasil dihapus", { id: toastId })
+      fetchAccounts()
+    } catch (error: any) {
+      // ✅ Error handling untuk fetch API
+      let errorMessage = "Gagal menghapus akun"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        if (error.message.includes("404")) {
+          errorMessage = "Akun tidak ditemukan"
+        } else if (error.message.includes("403")) {
+          errorMessage = "Tidak memiliki akses untuk menghapus"
+        }
+      }
+      
+      toast.error(errorMessage, { id: toastId })
     }
   }
 
@@ -254,32 +312,32 @@ export default function AccountsPage() {
                   )}
                 />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField
+                  <FormField
                     control={formCreate.control}
                     name="password"
                     render={({ field }) => (
-                        <FormItem>
+                      <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                            <Input type="password" placeholder="***" {...field} />
+                          <Input type="password" placeholder="***" {...field} />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-                     <FormField
+                  />
+                  <FormField
                     control={formCreate.control}
                     name="cookie"
                     render={({ field }) => (
-                        <FormItem>
+                      <FormItem>
                         <FormLabel>Cookie Session</FormLabel>
                         <FormControl>
-                            <Input placeholder="session_id=..." {...field} />
+                          <Input placeholder="session_id=..." {...field} />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
+                  />
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={submitLoading}>
@@ -292,106 +350,106 @@ export default function AccountsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* DIALOG EDIT (Terpisah agar state form bersih) */}
+        {/* DIALOG EDIT */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                <DialogTitle>Edit Akun</DialogTitle>
-                <DialogDescription>
-                    Ubah detail akun. Kosongkan password jika tidak ingin menggantinya.
-                </DialogDescription>
-                </DialogHeader>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Akun</DialogTitle>
+              <DialogDescription>
+                Ubah detail akun. Kosongkan password jika tidak ingin menggantinya.
+              </DialogDescription>
+            </DialogHeader>
 
-                <Form {...formEdit}>
-                <form onSubmit={formEdit.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
-                    <FormField
-                    control={formEdit.control}
-                    name="username"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Username</FormLabel>
+            <Form {...formEdit}>
+              <form onSubmit={formEdit.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
+                <FormField
+                  control={formEdit.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={formEdit.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                            <Input {...field} />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                          <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                          <SelectItem value="EXPIRED">EXPIRED</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={formEdit.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={formEdit.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password (Baru)</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Kosongkan jika tetap" {...field} />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-                    
-                    <FormField
+                  />
+                  <FormField
                     control={formEdit.control}
-                    name="status"
+                    name="cookie"
                     render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Pilih status" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                                <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                                <SelectItem value="EXPIRED">EXPIRED</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-
-                    <FormField
-                    control={formEdit.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Email</FormLabel>
+                      <FormItem>
+                        <FormLabel>Cookie</FormLabel>
                         <FormControl>
-                            <Input {...field} />
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                        control={formEdit.control}
-                        name="password"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Password (Baru)</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="Kosongkan jika tetap" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={formEdit.control}
-                        name="cookie"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Cookie</FormLabel>
-                            <FormControl>
-                                <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                    <DialogFooter>
-                    <Button type="submit" disabled={submitLoading}>
-                        {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-                        Update Akun
-                    </Button>
-                    </DialogFooter>
-                </form>
-                </Form>
-            </DialogContent>
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={submitLoading}>
+                    {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                    Update Akun
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
         </Dialog>
       </div>
 
@@ -403,12 +461,12 @@ export default function AccountsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-             <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-             </div>
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : accounts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-                Belum ada akun. Silakan tambah baru.
+              Belum ada akun. Silakan tambah baru.
             </div>
           ) : (
             <Table>
@@ -426,39 +484,39 @@ export default function AccountsPage() {
                     <TableCell className="font-medium">{acc.username}</TableCell>
                     <TableCell>{acc.email || "-"}</TableCell>
                     <TableCell>
-                        <Badge 
-                            variant="outline" 
-                            className={
-                                acc.status === 'ACTIVE' ? "bg-green-50 text-green-700 border-green-200" :
-                                acc.status === 'SUSPENDED' ? "bg-red-50 text-red-700 border-red-200" :
-                                "bg-yellow-50 text-yellow-700 border-yellow-200"
-                            }
-                        >
-                            {acc.status}
-                        </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          acc.status === 'ACTIVE' ? "bg-green-50 text-green-700 border-green-200" :
+                          acc.status === 'SUSPENDED' ? "bg-red-50 text-red-700 border-red-200" :
+                          "bg-yellow-50 text-yellow-700 border-yellow-200"
+                        }
+                      >
+                        {acc.status}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                            {/* TOMBOL EDIT */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => handleEditClick(acc)}
-                            >
-                                <Pencil className="h-4 w-4" />
-                            </Button>
+                      <div className="flex justify-end gap-2">
+                        {/* TOMBOL EDIT */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => handleEditClick(acc)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
 
-                            {/* TOMBOL DELETE */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDelete(acc.id)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
+                        {/* TOMBOL DELETE */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDelete(acc.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

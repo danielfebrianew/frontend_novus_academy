@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { apiService } from "@/lib/axios"
+import { apiService } from "@/lib/fetch"
 import toast from "react-hot-toast"
 import { useDispatch } from "react-redux"
 import { setUser } from "@/store/authSlice"
@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 
 const formSchema = z.object({
-  email: z.email("Email tidak valid"),
+  email: z.string().email("Email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
 })
 
@@ -58,7 +58,6 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     
-    // 2. Simpan ID toast loading agar bisa di-dismiss spesifik
     const loadingToastId = toast.loading("Sedang memverifikasi akun...")
 
     try {
@@ -72,8 +71,7 @@ export default function LoginPage() {
 
       dispatch(setUser(user))
 
-      // 3. Login Sukses
-      toast.dismiss(loadingToastId) // Hapus loading
+      toast.dismiss(loadingToastId)
       toast.success(`Selamat datang, ${user.name || 'User'}!`)
 
       router.push("/generate")
@@ -84,24 +82,30 @@ export default function LoginPage() {
       
       let errorMessage = "Terjadi kesalahan pada server."
 
-      if (error.response) {
-        errorMessage = error.response.data?.message || errorMessage;
-
-        if (error.response.status === 401 || error.response.status === 400) {
-            if (!error.response.data?.message) {
-                errorMessage = "Email atau password salah."; 
-            }
-        } else if (error.response.status === 429) {
-            errorMessage = "Terlalu banyak percobaan. Coba lagi nanti.";
-        } else if (error.response.status === 500) {
-            errorMessage = "Server sedang bermasalah. Hubungi admin.";
+      // ✅ PERBAIKAN: Error handling untuk fetch API
+      if (error instanceof Error) {
+        // Cek apakah error message dari backend (sudah di-parse di lib/fetch.ts)
+        errorMessage = error.message
+        
+        // Deteksi jenis error berdasarkan message
+        if (error.message.includes("401")) {
+          errorMessage = "Email atau password salah."
+        } else if (error.message.includes("400")) {
+          // Gunakan message dari backend jika ada, atau default
+          errorMessage = error.message.includes("HTTP error") 
+            ? "Email atau password salah." 
+            : error.message
+        } else if (error.message.includes("429")) {
+          errorMessage = "Terlalu banyak percobaan. Coba lagi nanti."
+        } else if (error.message.includes("500")) {
+          errorMessage = "Server sedang bermasalah. Hubungi admin."
+        } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet."
         }
-      } else if (error.request) {
-        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet.";
       }
 
       toast.error(errorMessage, {
-        duration: 4000, // Tampil agak lama biar user sempat baca
+        duration: 4000,
       })
       
     } finally {

@@ -9,7 +9,7 @@ import * as z from "zod"
 import toast from "react-hot-toast" 
 
 // 1. Ganti import axios dengan apiService
-import { apiService } from "@/lib/axios"
+import { apiService } from "@/lib/fetch"
 
 import { Button } from "@/components/ui/button"
 import {

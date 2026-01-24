@@ -1,4 +1,5 @@
-import axios from "axios";
+// services/api.ts
+
 import { 
   UploadResponse, 
   AnalyzeRequest, 
@@ -7,63 +8,138 @@ import {
   GenerateVideoResponse 
 } from "@/types/api";
 
-// Sesuai endpoint kamu: {{baseURL}}/api/v1/generate
-const API_BASE_URL = "https://api.novusnextgen.com/api/v1/generate";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+// ============================================================================
+// HELPER: Upload Images
+// ============================================================================
+const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
 
-export const apiService = {
-  // 1. Upload Images
-  uploadImages: async (files: File[]): Promise<string[]> => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
+  const response = await fetch(`${API_BASE_URL}/api/v1/generate/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
 
-    const res = await apiClient.post<UploadResponse>("/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    // Struktur Respon: { statusCode, message, data: { imageUrls: [...] } }
-    // Kita ambil: imageUrls
-    const body = res.data;
-    if (body.data && body.data.imageUrls) {
-      return body.data.imageUrls;
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
     }
-    throw new Error("Gagal mendapatkan URL gambar");
-  },
+    
+    throw new Error(errorMessage);
+  }
 
-  // 2. Analyze Image (Generate Text)
-  analyzeImage: async (payload: AnalyzeRequest) => {
-    const res = await apiClient.post<AnalyzeResponse>("/text", {
-      promptCount: 4, // default fallback
+  const body: UploadResponse = await response.json();
+
+  if (body.data && body.data.imageUrls) {
+    return body.data.imageUrls;
+  }
+  
+  throw new Error("Gagal mendapatkan URL gambar");
+};
+
+// ============================================================================
+// HELPER: Analyze Image
+// ============================================================================
+const analyzeImageData = async (payload: AnalyzeRequest) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/generate/text`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      promptCount: 4,
       ...payload
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+    
+    throw new Error(errorMessage);
+  }
+
+  const body: AnalyzeResponse = await response.json();
+  return body.data;
+};
+
+// ============================================================================
+// HELPER: Generate Video
+// ============================================================================
+const generateVideoData = async (payload: GenerateVideoRequest) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 menit
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/generate/video`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
-    // Struktur Respon: { statusCode, message, data: { voiceover, videoPrompts... } }
-    // Kita return object 'data' agar frontend bisa destructure { voiceover, videoPrompts }
-    return res.data.data; 
-  },
+    clearTimeout(timeoutId);
 
-  // 3. Generate Video
-  generateVideo: async (payload: GenerateVideoRequest) => {
-    const res = await apiClient.post<GenerateVideoResponse>("/video", payload, {
-      timeout: 900000, // 15 menit
-    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
 
-    // Struktur Respon: { statusCode, message, data: { variations: [...], jobId } }
-    // Kita return object 'data' agar frontend bisa akses .variations
-    return res.data.data;
-  },
+    const body: GenerateVideoResponse = await response.json();
+    return body.data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout setelah 15 menit');
+    }
+    throw error;
+  }
+};
 
-  // Helper untuk URL SSE
+// ============================================================================
+// EXPORT: API Service
+// ============================================================================
+export const generateApiService = {
+  // Upload Images
+  uploadImages: uploadFiles,
+
+  // Analyze Image
+  analyzeImage: analyzeImageData,
+
+  // Generate Video
+  generateVideo: generateVideoData,
+
+  // SSE Progress URL
   getProgressUrl: (jobId: string) => {
-    // Endpoint progress biasanya di root controller atau path spesifik
-    // Sesuaikan jika progress ada di /api/v1/generate/progress/:jobId
-    return `${API_BASE_URL}/progress/${jobId}`;
+    return `${API_BASE_URL}/api/v1/generate/progress/${jobId}`;
   }
 };

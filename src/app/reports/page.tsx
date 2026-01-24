@@ -178,7 +178,7 @@ const DashboardView = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const baseURL = "https://api.novusnextgen.com"; 
+        const baseURL = "http://localhost:3000"; // Ganti sesuai kebutuhan
         const url = `${baseURL}/api/v1/reports/view-tiktok`;
 
         const response = await axios.get<ApiResponse>(url, {
