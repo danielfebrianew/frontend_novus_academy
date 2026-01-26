@@ -76,7 +76,7 @@ const navMain = [
     url: "#",
     icon: FolderOpen,
     items: [
-      { title: "Assets Library", url: "/assets", icon: ImageIcon },
+      { title: "Assets Gallery", url: "/gallery", icon: ImageIcon },
       { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
       { title: "Caption Creation", url: "/prompts", icon: FileText },
     ],
