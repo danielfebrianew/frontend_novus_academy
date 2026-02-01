@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
+import { apiService } from "@/lib/fetch"; 
+
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store"; 
-import { setReportFilters, resetReportFilters } from "@/store/reportSlice"; // Sesuaikan path slice
+import { setReportFilters, resetReportFilters } from "@/store/reportSlice"; 
 import { AccountSelect } from "@/components/common/AccountSelect"; 
 
 // UI Components
@@ -58,7 +59,7 @@ const getPastDateString = (days: number) => {
 };
 
 // ============================================================================
-// KOMPONEN 1: FILTER FORM (Tampil jika belum pilih filter)
+// KOMPONEN 1: FILTER FORM (Tidak berubah logic-nya)
 // ============================================================================
 const FilterView = () => {
   const dispatch = useDispatch();
@@ -81,7 +82,6 @@ const FilterView = () => {
        return;
     }
 
-    // DISPATCH KE REDUX -> isFilterSet jadi true -> Pindah ke Dashboard
     dispatch(setReportFilters({
         accountId: selectedAccount.id,
         startDate: dateRange.startDate,
@@ -162,11 +162,10 @@ const FilterView = () => {
 };
 
 // ============================================================================
-// KOMPONEN 2: DASHBOARD VIEW (Tampil setelah filter dipilih)
+// KOMPONEN 2: DASHBOARD VIEW (Logic Fetch Diubah Disini)
 // ============================================================================
 const DashboardView = () => {
   const dispatch = useDispatch();
-  // AMBIL PARAMETER DARI REDUX
   const { accountId, startDate, endDate } = useSelector((state: RootState) => state.report);
   
   const [data, setData] = useState<ReportData[]>([]);
@@ -178,27 +177,27 @@ const DashboardView = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const baseURL = "http://localhost:3000"; // Ganti sesuai kebutuhan
-        const url = `${baseURL}/api/v1/reports/view-tiktok`;
 
-        const response = await axios.get<ApiResponse>(url, {
-            params: { accountId, startDate, endDate }, // Params dari Redux
-            withCredentials: true, 
-        });
+        const queryParams = new URLSearchParams({
+            accountId: String(accountId || ""), 
+            startDate: startDate || "",
+            endDate: endDate || ""
+        }).toString();
 
-        const json = response.data;
-        if (json.data && Array.isArray(json.data)) setData(json.data);
-        else setData([]);
+        const endpoint = `/api/v1/reports/view-tiktok?${queryParams}`;
+        
+        const response = await apiService.get<ApiResponse>(endpoint);
+
+        if (response.data && Array.isArray(response.data)) {
+            setData(response.data);
+        } else {
+            setData([]);
+        }
 
       } catch (err: any) {
-        if (axios.isAxiosError(err)) {
-            const status = err.response?.status;
-            const msg = err.response?.data?.message || err.message;
-            if (status === 401 || status === 403) setError("Sesi berakhir. Silakan login kembali.");
-            else setError(msg);
-        } else {
-            setError("Terjadi kesalahan tidak terduga.");
-        }
+        console.error("Fetch Error:", err);
+        // apiService akan throw Error dengan message dari backend
+        setError(err.message || "Gagal mengambil data laporan.");
       } finally {
         setIsLoading(false);
       }
@@ -219,7 +218,7 @@ const DashboardView = () => {
   }, [data]);
 
   const handleReset = () => {
-    dispatch(resetReportFilters()); // RESET REDUX -> Balik ke Filter View
+    dispatch(resetReportFilters());
   };
 
   if (isLoading) {
@@ -425,10 +424,8 @@ const DashboardView = () => {
 // MAIN PAGE: TRAFFIC CONTROLLER
 // ============================================================================
 export default function ReportsPage() {
-  // Cek Redux: Apakah user sudah set filter?
   const isFilterSet = useSelector((state: RootState) => state.report.isFilterSet);
 
-  // Jika belum, tampilkan Filter View. Jika sudah, tampilkan Dashboard.
   if (!isFilterSet) {
     return <FilterView />;
   }
