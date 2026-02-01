@@ -44,6 +44,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
   const {
     loading,
     uploadedImageUrls,
+    productName,
     prompts,
     script,
     targetCount,
@@ -188,6 +189,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       // 2. Call generate API
       const resultData = await generateApiService.generateVideo({
         images: uploadedImageUrls,
+        productName: productName,
         prompts: prompts,
         script: script,
         targetCount: Number(targetCount),
@@ -223,6 +225,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
     countLimits,
     targetCount,
     uploadedImageUrls,
+    productName,
     prompts,
     script,
     voiceGender,

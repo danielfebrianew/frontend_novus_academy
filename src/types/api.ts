@@ -33,6 +33,7 @@ export interface AnalyzeResponse extends ApiResponse<{
 
 export interface GenerateVideoRequest {
   images: string[];
+  productName: string;
   prompts: string[];
   script: string;
   jobId: string;
