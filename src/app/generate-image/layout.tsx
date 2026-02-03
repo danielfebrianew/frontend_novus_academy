@@ -7,7 +7,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider suppressHydrationWarning>
       {/* 1. Sidebar Kiri */}
       <AppSidebar />
       

@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, X, Loader2, Download, Sparkles, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { Upload, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ export default function GeneratePage() {
   const [productDescription, setProductDescription] = useState('');
   const [category, setCategory] = useState('fashion');
   const [background, setBackground] = useState('');
+  const [variantCount, setVariantCount] = useState(6);
 
   const [modelFile, setModelFile] = useState<File | null>(null);
   const [productFile, setProductFile] = useState<File | null>(null);
@@ -67,10 +69,19 @@ export default function GeneratePage() {
     }
   };
 
+  const removeFile = (type: 'model' | 'product') => {
+    if (type === 'model') {
+      setModelFile(null);
+      setModelPreview(null);
+    } else {
+      setProductFile(null);
+      setProductPreview(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // productFile wajib. modelFile optional.
     if (!productFile || !productName || !productDescription) {
       toast.error('Lengkapi Nama Produk, Deskripsi, dan Foto Produk.', {
         position: 'top-center',
@@ -89,6 +100,7 @@ export default function GeneratePage() {
       formData.append('productName', productName);
       formData.append('productDescription', productDescription);
       formData.append('category', category);
+      formData.append('variantCount', variantCount.toString());
       if (background.trim()) formData.append('background', background.trim());
       formData.append('productImage', productFile);
       if (modelFile) formData.append('modelImage', modelFile);
@@ -119,30 +131,21 @@ export default function GeneratePage() {
     }
   };
 
-  const handleDownload = async (url: string, variantNumber: number) => {
-    const downloadPromise = new Promise(async (resolve, reject) => {
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = `variant-${variantNumber}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        resolve('Berhasil');
-      } catch (e) {
-        reject(e);
-      }
-    });
+  const handleDownload = (url: string, variantNumber: number) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `variant-${variantNumber}.png`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    toast.promise(downloadPromise, {
-      loading: 'Mengunduh...',
-      success: 'Gambar berhasil disimpan!',
-      error: 'Gagal mengunduh gambar.',
-    });
+    toast.success('Download dimulai!');
   };
+
+  // Estimasi waktu berdasarkan jumlah varian
+  const estimatedTime = Math.round(variantCount * 12);
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -157,7 +160,7 @@ export default function GeneratePage() {
             AI Product Photography
           </h1>
           <p className="text-slate-500 max-w-2xl mx-auto">
-            Upload foto produk Anda, biarkan AI menggabungkannya menjadi 6 varian foto studio profesional secara instan.
+            Upload foto produk Anda, biarkan AI menggabungkannya menjadi varian foto studio profesional secara instan.
           </p>
         </div>
 
@@ -222,6 +225,36 @@ export default function GeneratePage() {
                   </Select>
                 </div>
 
+                {/* ✅ Variant Count Slider */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="variantCount">Jumlah Varian</Label>
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-700 font-semibold">
+                      {variantCount} {variantCount === 1 ? 'gambar' : 'gambar'}
+                    </Badge>
+                  </div>
+                  <Slider
+                    id="variantCount"
+                    min={1}
+                    max={6}
+                    step={1}
+                    value={[variantCount]}
+                    onValueChange={(value) => setVariantCount(value[0])}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>1</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>4</span>
+                    <span>5</span>
+                    <span>6</span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Estimasi waktu: ~{estimatedTime} detik
+                  </p>
+                </div>
+
                 {/* Background / Atmosphere */}
                 <div className="space-y-1.5">
                   <Label htmlFor="background">
@@ -255,12 +288,24 @@ export default function GeneratePage() {
                       />
                       <Label
                         htmlFor="modelUpload"
-                        className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-all ${
-                          modelPreview ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
-                        }`}
+                        className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-all ${modelPreview ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
+                          }`}
                       >
                         {modelPreview ? (
-                          <img src={modelPreview} alt="Model" className="w-full h-full object-cover rounded-lg opacity-80" />
+                          <div className="relative w-full h-full">
+                            <img src={modelPreview} alt="Model" className="w-full h-full object-cover rounded-lg opacity-80" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeFile('model');
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex flex-col items-center pt-5 pb-6">
                             <Upload className="w-6 h-6 text-slate-400 mb-1" />
@@ -286,12 +331,24 @@ export default function GeneratePage() {
                       />
                       <Label
                         htmlFor="productUpload"
-                        className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-all ${
-                          productPreview ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
-                        }`}
+                        className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-all ${productPreview ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
+                          }`}
                       >
                         {productPreview ? (
-                          <img src={productPreview} alt="Product" className="w-full h-full object-cover rounded-lg opacity-80" />
+                          <div className="relative w-full h-full">
+                            <img src={productPreview} alt="Product" className="w-full h-full object-cover rounded-lg opacity-80" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeFile('product');
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex flex-col items-center pt-5 pb-6">
                             <ImageIcon className="w-6 h-6 text-slate-400 mb-2" />
@@ -312,10 +369,12 @@ export default function GeneratePage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating (±70s)...
+                      Generating (~{estimatedTime}s)...
                     </>
                   ) : (
-                    'Generate Images'
+                    <>
+                      Generate {variantCount} {variantCount === 1 ? 'Image' : 'Images'}
+                    </>
                   )}
                 </Button>
               </form>
@@ -332,10 +391,10 @@ export default function GeneratePage() {
               </div>
             )}
 
-            {/* Skeleton loader */}
+            {/* Skeleton loader - dynamic based on variantCount */}
             {isLoading && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {[...Array(6)].map((_, i) => (
+                {[...Array(variantCount)].map((_, i) => (
                   <div key={i} className="space-y-2">
                     <Skeleton className="h-[300px] w-full rounded-xl bg-slate-200" />
                     <Skeleton className="h-4 w-3/4 bg-slate-200" />
