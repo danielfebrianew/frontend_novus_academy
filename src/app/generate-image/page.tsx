@@ -105,7 +105,7 @@ export default function GeneratePage() {
       formData.append('productImage', productFile);
       if (modelFile) formData.append('modelImage', modelFile);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.novusnextgen.com';
 
       const res = await fetch(`${API_URL}/api/v1/generate-image`, {
         method: 'POST',
