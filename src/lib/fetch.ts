@@ -1,8 +1,6 @@
 // lib/fetch.ts
 
-import { ApiResponse } from "@/types/api";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.novusnextgen.com";
 
 // Helper function untuk handle fetch response
 const handleResponse = async <T>(response: Response): Promise<T> => {
