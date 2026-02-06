@@ -74,7 +74,7 @@ export default function LoginPage() {
       toast.dismiss(loadingToastId)
       toast.success(`Selamat datang, ${user.name || 'User'}!`)
 
-      router.push("/generate")
+      router.push("/generate-video")
       router.refresh()
 
     } catch (error: any) {
@@ -82,7 +82,7 @@ export default function LoginPage() {
       
       let errorMessage = "Terjadi kesalahan pada server."
 
-      // ✅ PERBAIKAN: Error handling untuk fetch API
+      // PERBAIKAN: Error handling untuk fetch API
       if (error instanceof Error) {
         // Cek apakah error message dari backend (sudah di-parse di lib/fetch.ts)
         errorMessage = error.message
