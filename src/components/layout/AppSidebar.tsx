@@ -4,12 +4,9 @@ import * as React from "react"
 import axios from "axios"
 import {
   Sparkles,
-  Wand2,
   Shuffle,
   FolderOpen,
-  ImageIcon,
   CalendarClock,
-  FileText,
   Settings,
   Users,
   CreditCard,
@@ -19,6 +16,9 @@ import {
   User,
   LineChart,
   Activity,
+  Images,
+  Clapperboard,
+  ImagePlus,
 } from "lucide-react"
 import {
   Avatar,
@@ -65,9 +65,9 @@ const navMain = [
     url: "#",
     icon: Sparkles,
     items: [
-      { title: "AI Generator", url: "/generate", icon: Wand2 },
+      { title: "Video Generator", url: "/generate-video", icon: Clapperboard },
+      { title: "Image Generator ", url: "/generate-image", icon: ImagePlus },
       { title: "Video Mixer", url: "/video-mixer", icon: Shuffle },
-      // { title: "Editor (Canvas)", url: "/editor", icon: Frame },
     ],
   },
   {
@@ -76,9 +76,9 @@ const navMain = [
     url: "#",
     icon: FolderOpen,
     items: [
-      { title: "Assets Gallery", url: "/gallery", icon: ImageIcon },
+      { title: "Assets Gallery", url: "/gallery", icon: Images },
       { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
-      { title: "Caption Creation", url: "/prompts", icon: FileText },
+      // { title: "Caption Creation", url: "/prompts", icon: FileText },
     ],
   },
   {

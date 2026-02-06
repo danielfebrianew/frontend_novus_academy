@@ -11,6 +11,7 @@ export interface AnalyzePayload {
 
 export interface GeneratePayload {
   images: string[];
+  productName: string;
   prompts: string[];
   script: string;
   targetCount: number;

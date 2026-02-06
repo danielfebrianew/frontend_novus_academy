@@ -44,6 +44,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
   const {
     loading,
     uploadedImageUrls,
+    productName,
     prompts,
     script,
     targetCount,
@@ -57,7 +58,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
-      console.log("🔌 SSE Closed");
+      console.log("SSE Closed");
     }
   }, []);
 
@@ -66,24 +67,24 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
    */
   const setupSSE = useCallback((jobId: string) => {
     const progressUrl = generateApiService.getProgressUrl(jobId);
-    console.log("🔌 Connecting to SSE:", progressUrl);
+    console.log("Connecting to SSE:", progressUrl);
 
     const eventSource = new EventSource(progressUrl, { withCredentials: true });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log("✅ SSE Connected");
+      console.log("SSE Connected");
     };
 
     eventSource.onmessage = (event) => {
       try {
-        console.log("📡 SSE Raw:", event.data);
+        console.log("SSE Raw:", event.data);
         const parsed = JSON.parse(event.data);
         
         // Handle nested data structure: {"data": {"message": "...", "progress": 5}}
         const progressData: ProgressEvent = parsed.data || parsed;
         
-        console.log("📡 SSE Parsed:", progressData);
+        console.log("SSE Parsed:", progressData);
 
         if (progressData.message) {
           dispatch(setLoadingMsg(progressData.message));
@@ -93,12 +94,12 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
           dispatch(setProgressValue(progressData.progress));
         }
       } catch (err) {
-        console.error("❌ Error parsing SSE:", err);
+        console.error("Error parsing SSE:", err);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error("❌ SSE Error:", error);
+      console.error("SSE Error:", error);
       // EventSource will auto-reconnect
     };
 
@@ -188,6 +189,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       // 2. Call generate API
       const resultData = await generateApiService.generateVideo({
         images: uploadedImageUrls,
+        productName: productName,
         prompts: prompts,
         script: script,
         targetCount: Number(targetCount),
@@ -223,6 +225,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
     countLimits,
     targetCount,
     uploadedImageUrls,
+    productName,
     prompts,
     script,
     voiceGender,
