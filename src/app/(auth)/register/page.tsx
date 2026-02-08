@@ -1,3 +1,5 @@
+// src/app/%28auth%29/register/page.tsx
+
 "use client"
 
 import { useState, useEffect } from "react" 

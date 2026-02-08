@@ -1,23 +1,15 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 
 interface VideoMixerState {
-  outputDirectory: string; // Menyimpan path folder
+  // Reserved for future mixer state if needed
 }
 
-const initialState: VideoMixerState = {
-  // Default kosong atau bisa set default path umum
-  outputDirectory: "", 
-};
+const initialState: VideoMixerState = {};
 
 const videoMixerSlice = createSlice({
   name: "videoMixer",
   initialState,
-  reducers: {
-    setOutputDirectory: (state, action: PayloadAction<string>) => {
-      state.outputDirectory = action.payload;
-    },
-  },
+  reducers: {},
 });
 
-export const { setOutputDirectory } = videoMixerSlice.actions;
 export default videoMixerSlice.reducer;

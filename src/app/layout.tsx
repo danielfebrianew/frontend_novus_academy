@@ -1,8 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import StoreProvider from '@/providers/StoreProvider';
-import AuthProvider from "@/providers/AuthProvider";
+import { AuthInitializer } from "@/components/common/AuthInitializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Novus Next Gen",
-  description: "AI Generator for Affiliate Videos by Novus Academy",
+  title: "Novus Academy",
+  description: "AI Video Generator",
 };
 
 export default function RootLayout({
@@ -25,12 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <StoreProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthInitializer />
+          {children}
         </StoreProvider>
       </body>
     </html>

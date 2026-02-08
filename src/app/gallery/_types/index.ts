@@ -1,4 +1,13 @@
-// 1. Single video file shape
+// src/app/gallery/_types/index.ts
+
+// Generic API response wrapper
+export interface ApiResponse<T = any> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
+// Single video file
 export interface VideoResult {
   id: string;
   variationNumber: number;
@@ -9,24 +18,24 @@ export interface VideoResult {
   createdAt: string;
 }
 
-// 2. Job shape for the GRID VIEW (The API returns 'videoCount', not 'targetCount')
+// Job card di grid view
 export interface GalleryJobSummary {
   id: string;
   jobId: string;
   productName: string;
   thumbnailUrl: string | null;
-  videoCount: number; // ✅ This is what JobCard needs
-  voiceGender: 'male' | 'female';
+  videoCount: number;
+  voiceGender: "male" | "female";
   createdAt: string;
 }
 
-// 3. Job shape for the DETAIL MODAL
+// Job detail di modal
 export interface VideoJobDetail {
   id: string;
   jobId: string;
   productName: string;
   script: string;
-  voiceGender: 'male' | 'female';
+  voiceGender: "male" | "female";
   promptCount: number;
   targetCount: number;
   prompts: string[];
@@ -36,9 +45,9 @@ export interface VideoJobDetail {
   videos: VideoResult[];
 }
 
-// 4. API Response wrapper
+// Response wrapper untuk list jobs
 export interface GalleryResponse {
-  jobs: GalleryJobSummary[]; 
+  jobs: GalleryJobSummary[];
   meta: {
     total: number;
     page: number;

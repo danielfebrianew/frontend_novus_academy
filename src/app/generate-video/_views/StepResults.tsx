@@ -7,6 +7,7 @@
 import { useSelector } from "react-redux";
 import { CheckCircle, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import toast from "react-hot-toast";
 import type { VideoGeneratorState } from "../_types";
 
 export function StepResults() {
@@ -16,6 +17,31 @@ export function StepResults() {
 
   const handleCreateNew = () => {
     window.location.reload();
+  };
+
+  const handleDownload = async (url: string, idx: number) => {
+    const filename = `video-variation-${idx + 1}.mp4`;
+
+    if (window.electronAPI?.downloadFile) {
+      const result = await window.electronAPI.downloadFile(url, filename);
+      if (result.success) {
+        toast.success(`Tersimpan di ${result.filePath}`);
+      } else if (result.error) {
+        toast.error(`Gagal menyimpan: ${result.error}`);
+      }
+      return;
+    }
+
+    // Browser fallback
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Download dimulai!");
   };
 
   return (
@@ -41,20 +67,17 @@ export function StepResults() {
             className="bg-black rounded-lg overflow-hidden aspect-9/16 shadow-lg group relative"
           >
             <video src={url} controls className="w-full h-full object-cover" />
-            
+
             {/* Download Button (hover) */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a
-                href={url}
-                download
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => handleDownload(url, idx)}
                 className="bg-white/80 p-2 rounded-full hover:bg-white text-black block"
               >
                 <ArrowDown className="w-4 h-4" />
-              </a>
+              </button>
             </div>
-            
+
             {/* Variation Label */}
             <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
               Var #{idx + 1}

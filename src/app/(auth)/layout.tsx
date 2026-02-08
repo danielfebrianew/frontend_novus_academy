@@ -1,4 +1,5 @@
 // src/app/(auth)/layout.tsx
+
 import { Navbar } from "@/components/layout/AppNavbar";
 import { Toaster } from "react-hot-toast";
 

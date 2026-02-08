@@ -5,7 +5,7 @@
 import { useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
-import { generateApiService } from "@/services/api";
+import { generateApiService } from "../_services/api";
 import {
   setCaption,
   setLoading,
@@ -69,7 +69,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
     const progressUrl = generateApiService.getProgressUrl(jobId);
     console.log("Connecting to SSE:", progressUrl);
 
-    const eventSource = new EventSource(progressUrl, { withCredentials: true });
+    const eventSource = new EventSource(progressUrl);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

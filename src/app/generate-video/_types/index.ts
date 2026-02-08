@@ -2,6 +2,13 @@
 // VIDEO GENERATOR TYPES
 // =============================================================================
 
+// --- Generic API Response Wrapper ---
+export interface ApiResponse<T = any> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
 // --- API Payloads ---
 export interface AnalyzePayload {
   imageUrl: string;
@@ -20,6 +27,13 @@ export interface GeneratePayload {
 }
 
 // --- API Responses ---
+export interface CaptionComponents {
+  hooks: string[];
+  bodies: string[];
+  ctas: string[];
+  hashtags: string[][];
+}
+
 export interface AnalyzeResponse {
   voiceover: string;
   videoPrompts: string[];
@@ -30,11 +44,37 @@ export interface GenerateResponse {
   variations: string[];
 }
 
-export interface CaptionComponents {
-  hooks: string[];
-  bodies: string[];
-  ctas: string[];
-  hashtags: string[][];
+// --- API Response types (full wrapped responses used by service layer) ---
+export interface UploadApiResponse extends ApiResponse<{
+  imageUrls: string[];
+}> {}
+
+export interface AnalyzeApiResponse extends ApiResponse<{
+  voiceover: string;
+  videoPrompts: string[];
+  captionComponents: CaptionComponents;
+}> {}
+
+export interface GenerateVideoApiResponse extends ApiResponse<{
+  variations: string[];
+  jobId?: string;
+  totalVariations?: number;
+}> {}
+
+export interface AnalyzeRequest {
+  imageUrl: string;
+  productName: string;
+  promptCount?: number;
+}
+
+export interface GenerateVideoRequest {
+  images: string[];
+  productName: string;
+  prompts: string[];
+  script: string;
+  jobId: string;
+  targetCount: number;
+  voiceGender: string;
 }
 
 // --- State & Config ---

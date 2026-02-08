@@ -1,4 +1,6 @@
 export function formatToWIB(dateString: string | Date) {
+  // src/app/gallery/_utils/date.ts
+  
   if (!dateString) return "-";
   
   const date = new Date(dateString);

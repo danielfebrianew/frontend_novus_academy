@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import axios from "axios"
 import {
   Sparkles,
   Shuffle,
@@ -53,8 +52,8 @@ import {
 } from "@/components/ui/sidebar"
 import { useRouter, usePathname } from "next/navigation"
 import { useDispatch, useSelector } from "react-redux"
-import Cookies from "js-cookie"
 import { logout } from "@/store/authSlice"
+import { authService } from "@/lib/authService"
 import { RootState } from "@/store/store"
 import { toggleSection, setSectionOpen } from "@/store/sidebarSlice"
 
@@ -129,21 +128,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleLogout = async () => {
     try {
-      const token = Cookies.get("accessToken")
-      if (token) {
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/logout`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-      }
+      await authService.logout()
     } catch (error) {
       console.error(error)
     } finally {
-      Cookies.remove("accessToken")
-      Cookies.remove("currentUser")
+      localStorage.removeItem("currentUser")
       dispatch(logout())
-      router.push("/")
+      router.push("/login")
       router.refresh()
     }
   }

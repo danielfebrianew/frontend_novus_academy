@@ -1,8 +1,8 @@
 // lib/fetch.ts
+import { authService } from './authService';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.novusnextgen.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-// Helper function untuk handle fetch response
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorText = await response.text();
@@ -18,27 +18,28 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
     throw new Error(errorMessage);
   }
 
-  // ✅ FIX: Cek content-type sebelum parse JSON
   const contentType = response.headers.get("content-type");
   
   if (contentType && contentType.includes("application/json")) {
     return response.json();
   } else {
-    // Jika bukan JSON, return text atau blob
     const text = await response.text();
     return text as any;
   }
 };
 
-// Helper function untuk fetch dengan default options
 const fetchWithDefaults = async (
   url: string, 
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount: number = 0
 ): Promise<Response> => {
+  const token = authService.getAccessToken();
+  
   const defaultOptions: RequestInit = {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
   };
@@ -52,10 +53,15 @@ const fetchWithDefaults = async (
     },
   });
 
-  // Intercept untuk handle 401
-  if (response.status === 401) {
-    if (typeof window !== "undefined" && !window.location.pathname.includes("/auth")) {
-      // Redirect atau handle unauthorized
+  if (response.status === 401 && retryCount === 0) {
+    try {
+      await authService.refresh();
+      return fetchWithDefaults(url, options, retryCount + 1);
+    } catch {
+      if (typeof window !== "undefined" && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired');
     }
   }
 
@@ -106,21 +112,20 @@ export const apiService = {
     return handleResponse<T>(response);
   },
 
-  // ✅ FIX: Upload khusus untuk FormData
   upload: async <T>(url: string, formData: FormData, config?: RequestInit) => {
-    // ✅ PENTING: Jangan set Content-Type untuk FormData
-    // Browser akan set otomatis dengan boundary yang benar
+    const token = authService.getAccessToken();
     const { headers, ...restConfig } = config || {};
     
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
       credentials: 'include',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
       body: formData,
       ...restConfig,
-      // ✅ Jangan include headers untuk FormData
     });
 
-    // Handle error manual karena tidak lewat fetchWithDefaults
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = `HTTP error! status: ${response.status}`;

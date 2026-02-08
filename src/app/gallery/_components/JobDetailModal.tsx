@@ -2,7 +2,7 @@ import {
   Dialog, DialogContent, DialogHeader, 
   DialogTitle, DialogDescription 
 } from "@/components/ui/dialog";
-import { useJobDetail } from "@/hooks/useGallery"; 
+import { useJobDetail } from "../_hooks/useGallery"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";

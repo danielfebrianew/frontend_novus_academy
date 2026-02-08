@@ -20,6 +20,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { VariantCard } from './_components/variantCard';
 import { ApiResponse, GenerationData } from './_types';
+import { authService } from '@/lib/authService';
 
 // ─── Category options ─────────────────────────────────────────────────────────
 
@@ -105,10 +106,14 @@ export default function GeneratePage() {
       formData.append('productImage', productFile);
       if (modelFile) formData.append('modelImage', modelFile);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.novusnextgen.com';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = authService.getAccessToken();
 
       const res = await fetch(`${API_URL}/api/v1/generate-image`, {
         method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         body: formData,
       });
 
@@ -131,16 +136,29 @@ export default function GeneratePage() {
     }
   };
 
-  const handleDownload = (url: string, variantNumber: number) => {
+  const handleDownload = async (url: string, variantNumber: number) => {
+    const filename = `variant-${variantNumber}.png`;
+
+    // Electron: use native save dialog
+    if (window.electronAPI?.downloadFile) {
+      const result = await window.electronAPI.downloadFile(url, filename);
+      if (result.success) {
+        toast.success(`Tersimpan di ${result.filePath}`);
+      } else if (result.error) {
+        toast.error(`Gagal menyimpan: ${result.error}`);
+      }
+      return;
+    }
+
+    // Browser fallback
     const link = document.createElement('a');
     link.href = url;
-    link.download = `variant-${variantNumber}.png`;
+    link.download = filename;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     toast.success('Download dimulai!');
   };
 

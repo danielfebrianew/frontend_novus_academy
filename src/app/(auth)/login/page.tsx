@@ -1,3 +1,4 @@
+// src/app/(auth)/login/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,10 +7,10 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { apiService } from "@/lib/fetch"
+import { authService } from "@/lib/authService"
 import toast from "react-hot-toast"
 import { useDispatch } from "react-redux"
-import { setUser } from "@/store/authSlice"
+import { setUser, setAccessToken } from "@/store/authSlice"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -44,7 +45,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsMounted(true)
-    localStorage.removeItem("currentUser")
   }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -57,19 +57,20 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    
     const loadingToastId = toast.loading("Sedang memverifikasi akun...")
 
     try {
-      const result = await apiService.post<any>("/api/v1/auth/login", values)
-
-      const user = result.data?.user || result.user
+      const user = await authService.login(values.email, values.password)
+      const accessToken = authService.getAccessToken()
 
       if (typeof window !== "undefined") {
         localStorage.setItem("currentUser", JSON.stringify(user))
       }
 
       dispatch(setUser(user))
+      if (accessToken) {
+        dispatch(setAccessToken(accessToken))
+      }
 
       toast.dismiss(loadingToastId)
       toast.success(`Selamat datang, ${user.name || 'User'}!`)
@@ -82,16 +83,12 @@ export default function LoginPage() {
       
       let errorMessage = "Terjadi kesalahan pada server."
 
-      // PERBAIKAN: Error handling untuk fetch API
       if (error instanceof Error) {
-        // Cek apakah error message dari backend (sudah di-parse di lib/fetch.ts)
         errorMessage = error.message
         
-        // Deteksi jenis error berdasarkan message
         if (error.message.includes("401")) {
           errorMessage = "Email atau password salah."
         } else if (error.message.includes("400")) {
-          // Gunakan message dari backend jika ada, atau default
           errorMessage = error.message.includes("HTTP error") 
             ? "Email atau password salah." 
             : error.message
@@ -164,7 +161,7 @@ export default function LoginPage() {
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-600">
             Belum punya akun?{" "}
-            <Link href="/auth/register" className="text-blue-600 hover:underline">
+            <Link href="/register" className="text-blue-600 hover:underline">
               Daftar sekarang
             </Link>
           </p>

@@ -53,15 +53,15 @@ export const ERROR_CODE_MAP: Record<string, string> = {
 
 // --- Count Limits by Prompt Count ---
 export const COUNT_LIMITS_CONFIG: Record<number, CountLimits> = {
-  4: { min: 4, max: 20, default: 5 },
-  5: { min: 5, max: 50, default: 10 },
-  6: { min: 6, max: 100, default: 15 },
+  4: { min: 1, max: 20, default: 5 },
+  5: { min: 1, max: 50, default: 10 },
+  6: { min: 1, max: 100, default: 15 },
 };
 
-export const DEFAULT_COUNT_LIMITS: CountLimits = { 
-  min: 4, 
-  max: 20, 
-  default: 5 
+export const DEFAULT_COUNT_LIMITS: CountLimits = {
+  min: 1,
+  max: 20,
+  default: 5
 };
 
 // --- Voice Gender Options ---
