@@ -136,21 +136,8 @@ export default function GeneratePage() {
     }
   };
 
-  const handleDownload = async (url: string, variantNumber: number) => {
+  const handleDownload = (url: string, variantNumber: number) => {
     const filename = `variant-${variantNumber}.png`;
-
-    // Electron: use native save dialog
-    if (window.electronAPI?.downloadFile) {
-      const result = await window.electronAPI.downloadFile(url, filename);
-      if (result.success) {
-        toast.success(`Tersimpan di ${result.filePath}`);
-      } else if (result.error) {
-        toast.error(`Gagal menyimpan: ${result.error}`);
-      }
-      return;
-    }
-
-    // Browser fallback
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;

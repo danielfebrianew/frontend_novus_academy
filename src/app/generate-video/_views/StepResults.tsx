@@ -19,20 +19,8 @@ export function StepResults() {
     window.location.reload();
   };
 
-  const handleDownload = async (url: string, idx: number) => {
+  const handleDownload = (url: string, idx: number) => {
     const filename = `video-variation-${idx + 1}.mp4`;
-
-    if (window.electronAPI?.downloadFile) {
-      const result = await window.electronAPI.downloadFile(url, filename);
-      if (result.success) {
-        toast.success(`Tersimpan di ${result.filePath}`);
-      } else if (result.error) {
-        toast.error(`Gagal menyimpan: ${result.error}`);
-      }
-      return;
-    }
-
-    // Browser fallback
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;

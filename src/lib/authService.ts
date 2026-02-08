@@ -22,11 +22,7 @@ class AuthService {
     
     this.accessToken = data.accessToken;
     
-    if (window.electronAPI) {
-      await window.electronAPI.saveRefreshToken(data.refreshToken);
-    } else {
-      localStorage.setItem('refreshToken', data.refreshToken);
-    }
+    localStorage.setItem('refreshToken', data.refreshToken);
     
     this.scheduleTokenRefresh(data.expiresIn);
     
@@ -34,14 +30,8 @@ class AuthService {
   }
 
   async refresh() {
-    let refreshToken: string | undefined;
-    
-    if (window.electronAPI) {
-      refreshToken = await window.electronAPI.getRefreshToken();
-    } else {
-      refreshToken = localStorage.getItem('refreshToken') || undefined;
-    }
-    
+    const refreshToken = localStorage.getItem('refreshToken');
+
     if (!refreshToken) throw new Error('No refresh token');
 
     const result = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
@@ -83,14 +73,8 @@ class AuthService {
   }
 
   async logout() {
-    let refreshToken: string | undefined;
-    
-    if (window.electronAPI) {
-      refreshToken = await window.electronAPI.getRefreshToken();
-    } else {
-      refreshToken = localStorage.getItem('refreshToken') || undefined;
-    }
-    
+    const refreshToken = localStorage.getItem('refreshToken');
+
     if (refreshToken) {
       try {
         await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
@@ -105,11 +89,7 @@ class AuthService {
     
     this.accessToken = null;
     
-    if (window.electronAPI) {
-      await window.electronAPI.removeRefreshToken();
-    } else {
-      localStorage.removeItem('refreshToken');
-    }
+    localStorage.removeItem('refreshToken');
     
     if (this.refreshTokenTimer) clearTimeout(this.refreshTokenTimer);
   }
