@@ -18,6 +18,7 @@ import {
   Images,
   Clapperboard,
   ImagePlus,
+  Video,
 } from "lucide-react"
 import {
   Avatar,
@@ -65,6 +66,7 @@ const navMain = [
     icon: Sparkles,
     items: [
       { title: "Video Generator", url: "/generate-video", icon: Clapperboard },
+      { title: "Pro Video Generator", url: "/generate-pro", icon: Video },
       { title: "Image Generator ", url: "/generate-image", icon: ImagePlus },
       { title: "Video Mixer", url: "/video-mixer", icon: Shuffle },
     ],
