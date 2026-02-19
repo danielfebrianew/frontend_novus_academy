@@ -1,24 +1,24 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, Video, AlertTriangle, Upload, ImageIcon } from 'lucide-react';
+import { Loader2, Sparkles, Video, AlertTriangle, Upload, ImageIcon, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import toast, { Toaster } from 'react-hot-toast';
-import { useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import { VideoResultCard } from './_components/VideoResultCard';
-import { CreateProResponse, ProProgressEvent } from './_types';
+import { CreateProResponse, ProProgressEvent, StatusResponse } from './_types';
 import { authService } from '@/lib/authService';
-import { RootState } from '@/store/store';
+import apiService from '@/lib/fetch';
+import { useActiveJob } from '@/hooks/useActiveJob';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function GenerateProPage() {
-  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const { activeJob, isCheckingActiveJob, clearActiveJob } = useActiveJob();
 
   // Form state
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -33,13 +33,21 @@ export default function GenerateProPage() {
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [resultUrls, setResultUrls] = useState<string[] | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
+  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const clearActiveJobRef = useRef(clearActiveJob);
+  clearActiveJobRef.current = clearActiveJob;
 
   const cleanupSSE = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
     }
   }, []);
 
@@ -49,7 +57,37 @@ export default function GenerateProPage() {
     };
   }, [cleanupSSE]);
 
-  const setupSSE = useCallback((jobId: string, token: string | null) => {
+  const queryFallbackStatus = useCallback(async (fallbackTaskId: string) => {
+    try {
+      const data = await apiService.get<StatusResponse>(`/api/v1/generate-pro/status/${fallbackTaskId}`);
+      const { state, resultUrls, failMsg } = data.data;
+
+      if (state === 'success') {
+        setResultUrls(resultUrls);
+        setProgress(100);
+        setIsLoading(false);
+        clearActiveJobRef.current();
+        toast.success('Video berhasil dibuat!');
+      } else if (state === 'fail') {
+        setGenError(failMsg || 'Generate video gagal');
+        setIsLoading(false);
+        clearActiveJobRef.current();
+        toast.error(failMsg || 'Generate video gagal');
+      } else {
+        // still processing — retry after 5s
+        setProgressMsg('Menunggu hasil video (polling)...');
+        fallbackTimerRef.current = setTimeout(() => {
+          queryFallbackStatus(fallbackTaskId);
+        }, 5000);
+      }
+    } catch (err) {
+      console.error('Fallback status error:', err);
+      setGenError('Gagal mengecek status video');
+      setIsLoading(false);
+    }
+  }, []);
+
+  const setupSSE = useCallback((jobId: string, token: string | null, fallbackTaskId: string | null) => {
     const progressUrl = `${API_URL}/api/v1/generate-pro/progress/${jobId}${token ? `?token=${token}` : ''}`;
 
     const eventSource = new EventSource(progressUrl);
@@ -72,11 +110,13 @@ export default function GenerateProPage() {
           setResultUrls(data.resultUrls);
           cleanupSSE();
           setIsLoading(false);
+          clearActiveJobRef.current();
           toast.success('Video berhasil dibuat!');
         } else if (data.progress === -1) {
           setGenError(data.failMsg || 'Terjadi kesalahan saat generate video');
           cleanupSSE();
           setIsLoading(false);
+          clearActiveJobRef.current();
           toast.error(data.failMsg || 'Generate video gagal');
         }
       } catch (err) {
@@ -84,10 +124,37 @@ export default function GenerateProPage() {
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE Error:', error);
+    eventSource.onerror = () => {
+      if (eventSource.readyState === EventSource.CLOSED) {
+        console.error('SSE connection closed, falling back to status polling');
+        cleanupSSE();
+        if (fallbackTaskId) {
+          queryFallbackStatus(fallbackTaskId);
+        } else {
+          setGenError('Koneksi SSE terputus dan tidak ada fallback tersedia');
+          setIsLoading(false);
+        }
+      }
     };
-  }, [cleanupSSE]);
+  }, [cleanupSSE, queryFallbackStatus]);
+
+  // Active job reconnection
+  const activeJobReconnectedRef = useRef(false);
+
+  useEffect(() => {
+    if (isCheckingActiveJob) return;
+    if (!activeJob) return;
+    if (activeJobReconnectedRef.current) return;
+
+    activeJobReconnectedRef.current = true;
+
+    setIsLoading(true);
+    setProgress(0);
+    setProgressMsg('Menghubungkan ulang ke job aktif...');
+    setTaskId(activeJob.taskId);
+
+    setupSSE(activeJob.jobId, authService.getAccessToken(), activeJob.taskId);
+  }, [isCheckingActiveJob, activeJob, setupSSE]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,6 +176,7 @@ export default function GenerateProPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
 
     if (!imageFile || !productTitle.trim() || !productDescription.trim()) {
       toast.error('Semua field wajib diisi', { position: 'top-center' });
@@ -116,6 +184,7 @@ export default function GenerateProPage() {
     }
 
     cleanupSSE();
+    lastPositiveProgressRef.current = 0;
     setIsLoading(true);
     setProgress(null);
     setProgressMsg('');
@@ -124,9 +193,8 @@ export default function GenerateProPage() {
     setGenError(null);
 
     const jobId = crypto.randomUUID();
-    const token = accessToken || authService.getAccessToken();
 
-    const loadingToast = toast.loading('Mengirim task ke Kie.ai...', { position: 'top-center' });
+    const loadingToast = toast.loading('Mengirim task ke Ai Generator...', { position: 'top-center' });
 
     try {
       const formData = new FormData();
@@ -135,19 +203,7 @@ export default function GenerateProPage() {
       formData.append('productTitle', productTitle.trim());
       formData.append('productDescription', productDescription.trim());
 
-      const res = await fetch(`${API_URL}/api/v1/generate-pro/create`, {
-        method: 'POST',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: formData,
-      });
-
-      const data: CreateProResponse = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Gagal mengirim task');
-      }
+      const data = await apiService.upload<CreateProResponse>('/api/v1/generate-pro/create', formData);
 
       toast.dismiss(loadingToast);
       toast.success('Task dikirim! Menunggu hasil video...', { position: 'top-center' });
@@ -156,7 +212,8 @@ export default function GenerateProPage() {
         setGeneratedPrompt(data.data.generatedPrompt);
       }
 
-      setupSSE(data.data.jobId || jobId, token);
+      setTaskId(data.data.taskId);
+      setupSSE(data.data.jobId || jobId, authService.getAccessToken(), data.data.taskId);
 
     } catch (error: unknown) {
       toast.dismiss(loadingToast);
@@ -167,10 +224,45 @@ export default function GenerateProPage() {
   };
 
   const isGenerating = isLoading && progress !== null;
+  const showStepper = isLoading || resultUrls !== null || genError !== null;
+
+  const lastPositiveProgressRef = useRef(0);
+  if (progress !== null && progress > 0) {
+    lastPositiveProgressRef.current = progress;
+  }
+
+  const STEPS = [
+    { label: 'Upload Gambar', threshold: 5, icon: Upload },
+    { label: 'Generate Prompt', threshold: 15, icon: Sparkles },
+    { label: 'Submit ke Ai Generator', threshold: 30, icon: Send },
+    { label: 'Rendering Video', threshold: 40, icon: Video },
+    { label: 'Selesai', threshold: 100, icon: CheckCircle2 },
+  ];
+
+  const getStepStatus = (threshold: number, index: number): 'pending' | 'active' | 'completed' | 'failed' => {
+    const p = progress ?? 0;
+    const isFailed = p === -1;
+    const effectiveProgress = isFailed ? lastPositiveProgressRef.current : p;
+
+    if (isFailed) {
+      if (effectiveProgress >= threshold) return 'completed';
+      // The first pending step after last completed = the one that failed
+      const prevThreshold = index > 0 ? STEPS[index - 1].threshold : 0;
+      if (effectiveProgress >= prevThreshold && effectiveProgress < threshold) return 'failed';
+      return 'pending';
+    }
+
+    if (effectiveProgress >= threshold) return 'completed';
+
+    // Active = first step not yet completed
+    const prevThreshold = index > 0 ? STEPS[index - 1].threshold : 0;
+    if (effectiveProgress >= prevThreshold) return 'active';
+
+    return 'pending';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-2">
-      <Toaster />
 
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
@@ -194,6 +286,12 @@ export default function GenerateProPage() {
               <CardDescription>Upload foto dan masukkan detail produk.</CardDescription>
             </CardHeader>
             <CardContent>
+              {isLoading && activeJobReconnectedRef.current && (
+                <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                  <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
+                  <span>Anda memiliki generasi yang sedang berjalan. Harap tunggu hingga selesai.</span>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Image Upload */}
                 <div className="space-y-1.5">
@@ -318,6 +416,67 @@ export default function GenerateProPage() {
               </div>
             )}
 
+            {/* Status Stepper */}
+            {showStepper && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between">
+                  {STEPS.map((step, index) => {
+                    const status = getStepStatus(step.threshold, index);
+                    const StepIcon = status === 'failed' ? XCircle : status === 'completed' ? CheckCircle2 : step.icon;
+
+                    return (
+                      <React.Fragment key={step.label}>
+                        {/* Step */}
+                        <div className="flex flex-col items-center gap-1.5 min-w-0">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                              status === 'completed'
+                                ? 'bg-green-100 text-green-600'
+                                : status === 'active'
+                                ? 'bg-purple-100 text-purple-600 animate-pulse'
+                                : status === 'failed'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-slate-100 text-slate-300'
+                            }`}
+                          >
+                            <StepIcon className="w-5 h-5" />
+                          </div>
+                          <span
+                            className={`text-[10px] font-medium text-center leading-tight ${
+                              status === 'completed'
+                                ? 'text-green-600'
+                                : status === 'active'
+                                ? 'text-purple-600'
+                                : status === 'failed'
+                                ? 'text-red-600'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+
+                        {/* Connector line */}
+                        {index < STEPS.length - 1 && (
+                          <div
+                            className={`flex-1 h-0.5 mx-1 rounded transition-all ${
+                              getStepStatus(STEPS[index + 1].threshold, index + 1) === 'completed' ||
+                              getStepStatus(STEPS[index + 1].threshold, index + 1) === 'active' ||
+                              getStepStatus(STEPS[index + 1].threshold, index + 1) === 'failed'
+                                ? status === 'failed' || getStepStatus(STEPS[index + 1].threshold, index + 1) === 'failed'
+                                  ? 'bg-red-200'
+                                  : 'bg-green-300'
+                                : 'bg-slate-200'
+                            }`}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Generated Prompt Preview */}
             {generatedPrompt && (
               <Card className="border-purple-200 bg-purple-50">
@@ -346,7 +505,7 @@ export default function GenerateProPage() {
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full animate-ping" />
                   </div>
                   <p className="text-slate-700 font-medium text-center">
-                    {progressMsg || 'Menghubungkan ke Kie.ai...'}
+                    {progressMsg || 'Menghubungkan ke Ai Generator...'}
                   </p>
                 </div>
 
@@ -362,7 +521,7 @@ export default function GenerateProPage() {
 
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Jangan tutup atau refresh halaman ini hingga video selesai dibuat.</span>
+                  <span>Anda bisa meninggalkan halaman ini. Kami akan mengirim notifikasi saat selesai.</span>
                 </div>
               </div>
             )}

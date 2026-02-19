@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import toast, { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast"
 import { Loader2, Trash2, Pencil, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -260,8 +260,6 @@ export default function AccountsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <Toaster position="top-right" />
-      
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Accounts</h1>

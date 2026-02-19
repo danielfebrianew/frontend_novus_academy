@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Upload, FileVideo, FileAudio, X, Loader2, CheckCircle2, Film, ExternalLink, Package, FileText, User } from "lucide-react"
-import toast, { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -194,8 +194,6 @@ export default function VideoMixerPage() {
 
   return (
     <div className="container mx-auto max-w-3xl py-10 px-4">
-      <Toaster position="top-center" />
-
       <Card className="shadow-lg border-slate-200">
         <CardHeader className="bg-white border-b">
           <CardTitle className="text-2xl flex items-center gap-2">

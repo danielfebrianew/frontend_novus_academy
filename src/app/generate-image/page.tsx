@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { VariantCard } from './_components/variantCard';
 import { ApiResponse, GenerationData } from './_types';
 import { authService } from '@/lib/authService';
@@ -156,8 +156,6 @@ export default function GeneratePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-2">
-      <Toaster />
-
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">

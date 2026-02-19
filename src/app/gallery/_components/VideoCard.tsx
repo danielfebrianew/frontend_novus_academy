@@ -14,7 +14,7 @@ export function VideoCard({ video }: { video: any }) {
           src={video.videoUrl} 
           controls 
           className="w-full h-full"
-          poster="/video-placeholder.png"
+          preload="metadata"
         />
       </CardContent>
       <CardFooter className="p-3 flex justify-between items-center">

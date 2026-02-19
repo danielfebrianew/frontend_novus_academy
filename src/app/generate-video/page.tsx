@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
-import { Toaster } from "react-hot-toast";
+
 
 // Hooks
 import { useVideoGeneration } from "./_hooks/useVideoGeneration";
@@ -46,8 +46,6 @@ export default function VideoGeneratorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans text-slate-900">
-      <Toaster position="top-center" reverseOrder={false} />
-
       {/* Main Content */}
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Step 1: Upload & Crop */}

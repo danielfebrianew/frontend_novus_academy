@@ -135,6 +135,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       console.error(error)
     } finally {
       localStorage.removeItem("currentUser")
+      sessionStorage.removeItem("novus_notif_toasted")
       dispatch(logout())
       router.push("/login")
       router.refresh()

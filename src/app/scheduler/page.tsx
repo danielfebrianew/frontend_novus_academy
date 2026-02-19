@@ -5,7 +5,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { id as idLocale } from "date-fns/locale" 
 
-import toast, { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast"
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
@@ -442,8 +442,6 @@ export default function SchedulerPage() {
 
   return (
     <div className="p-6 space-y-6 relative min-h-screen pb-20">
-      <Toaster position="top-right" />
-
       {/* HEADER & CONTROLS */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

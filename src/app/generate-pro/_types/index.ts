@@ -4,6 +4,7 @@ export interface CreateProResponse {
   data: {
     jobId: string;
     taskId: string;
+    imageUrl: string;
     generatedPrompt: string;
   };
 }
@@ -13,4 +14,18 @@ export interface ProProgressEvent {
   progress: number;
   resultUrls: string[] | null;
   failMsg: string | null;
+}
+
+export interface StatusResponse {
+  statusCode: number;
+  message: string;
+  data: {
+    taskId: string;
+    state: 'success' | 'processing' | 'fail';
+    model: string;
+    resultUrls: string[];
+    failCode: string | null;
+    failMsg: string | null;
+    costTime: number;
+  };
 }

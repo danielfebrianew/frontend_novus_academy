@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 
 const formSchema = z.object({
-  email: z.string().email("Email tidak valid"),
+  email: z.email("Email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
 })
 
