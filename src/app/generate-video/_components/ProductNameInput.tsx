@@ -18,9 +18,9 @@ export function ProductNameInput() {
   return (
     <div className="max-w-xl mx-auto mb-10 text-center space-y-6">
       <div>
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">
-          AI Video Generator
-        </h1>
+         <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
+            AI Video Generator
+          </h1>
         <p className="text-slate-500">
           Upload foto produk, crop 9:16, biarkan AI bekerja.
         </p>

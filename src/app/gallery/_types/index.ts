@@ -25,7 +25,8 @@ export interface GalleryJobSummary {
   productName: string;
   thumbnailUrl: string | null;
   videoCount: number;
-  voiceGender: "male" | "female";
+  voiceGender: "male" | "female" | null;
+  isPro: boolean;
   createdAt: string;
 }
 
@@ -35,12 +36,13 @@ export interface VideoJobDetail {
   jobId: string;
   productName: string;
   script: string;
-  voiceGender: "male" | "female";
+  voiceGender: "male" | "female" | null;
   promptCount: number;
   targetCount: number;
   prompts: string[];
   inputImages: string[];
   thumbnailUrl: string | null;
+  isPro: boolean;
   createdAt: string;
   videos: VideoResult[];
 }

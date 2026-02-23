@@ -486,18 +486,17 @@ export function StepUpload({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-        <div className="w-full">
-         <ProductNameInput />
+      <div className="w-full">
+        <ProductNameInput />
       </div>
       <div
         className={`
           relative group cursor-pointer
           rounded-2xl border-2 border-dashed transition-all duration-300
           flex flex-col items-center justify-center py-16 px-6 text-center
-          ${
-            isDragOver
-              ? "border-blue-500 bg-blue-50"
-              : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400"
+          ${isDragOver
+            ? "border-blue-500 bg-blue-50"
+            : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400"
           }
         `}
         onDragOver={handleDragOver}

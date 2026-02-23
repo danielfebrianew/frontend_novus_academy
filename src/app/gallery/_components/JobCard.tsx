@@ -9,7 +9,8 @@ interface JobCardProps {
     productName: string;
     thumbnailUrl: string | null;
     videoCount: number;
-    voiceGender: string;
+    voiceGender: string | null;
+    isPro: boolean;
     createdAt: string;
   };
   onClick: (jobId: string) => void;
@@ -88,9 +89,15 @@ export function JobCard({ job, onClick }: JobCardProps) {
           <CalendarClock className="mr-1 h-3 w-3" />
           {formatWIB(job.createdAt)}
         </div>
-        <Badge variant="secondary" className="capitalize text-[10px] h-5 px-2">
-          {job.voiceGender}
-        </Badge>
+        {job.isPro ? (
+          <Badge className="text-[10px] h-5 px-2 bg-primary text-primary-foreground">
+            Pro
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="capitalize text-[10px] h-5 px-2">
+            {job.voiceGender}
+          </Badge>
+        )}
       </CardFooter>
     </Card>
   );

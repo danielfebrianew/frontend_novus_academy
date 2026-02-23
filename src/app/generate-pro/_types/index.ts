@@ -16,6 +16,17 @@ export interface ProProgressEvent {
   failMsg: string | null;
 }
 
+export interface KieJobRecord {
+  code: number;
+  message: string;
+  data: {
+    taskId: string;
+    state: 'success' | 'processing' | 'fail' | 'queue';
+    resultJson: string | null;
+    failMsg: string;
+  };
+}
+
 export interface StatusResponse {
   statusCode: number;
   message: string;
