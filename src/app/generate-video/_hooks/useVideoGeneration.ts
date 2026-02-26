@@ -200,11 +200,13 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       // 3. Cleanup dan update state
       cleanupSSE();
       dispatch(setProgressValue(100));
-      dispatch(setResults(resultData.variations));
+
+      const videoUrls = resultData.videos.map((v) => v.videoUrl);
+      dispatch(setResults(videoUrls));
       dispatch(setStep(4));
 
       toast.dismiss(generatingToastId);
-      toast.success(`${resultData.variations.length} video berhasil dibuat!`, { duration: 4000 });
+      toast.success(`${resultData.videos.length} video berhasil dibuat!`, { duration: 4000 });
 
     } catch (error) {
       console.error("Generate video error:", error);

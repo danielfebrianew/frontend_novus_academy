@@ -68,16 +68,21 @@ export default function GeneratePage() {
 
       {token && (
         <div className="flex flex-col items-center gap-3 w-full max-w-md">
-          <div className="flex items-center gap-2 w-full rounded-lg border bg-slate-50 dark:bg-slate-900 px-4 py-3">
-            <code className="flex-1 text-sm break-all select-all">{token}</code>
-            <button onClick={copyToken} className="shrink-0 text-slate-500 hover:text-slate-700">
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </button>
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex items-center gap-2 w-full rounded-lg border bg-slate-50 dark:bg-slate-900 px-4 py-3">
+              <code className="flex-1 text-sm break-all select-all">{token}</code>
+              <button onClick={copyToken} className="shrink-0 text-slate-500 hover:text-slate-700">
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </button>
+            </div>
+            {expiresIn && (
+              <p className="text-xs text-slate-500 text-center">Berlaku selama {expiresIn}</p>
+            )}
           </div>
 
           <Button asChild className="bg-purple-600 hover:bg-purple-700">
             <a
-              href="https://gemini.google.com/share/7639f6200269"
+              href="https://gemini.google.com/share/90b903b88a15"
               target="_blank"
               rel="noopener noreferrer"
             >

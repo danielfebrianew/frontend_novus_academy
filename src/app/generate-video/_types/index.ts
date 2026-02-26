@@ -40,8 +40,16 @@ export interface AnalyzeResponse {
   captionComponents: CaptionComponents;
 }
 
+export interface VideoVariation {
+  variationIndex: number;
+  videoUrl: string;
+  thumbnailUrl: string;
+}
+
 export interface GenerateResponse {
-  variations: string[];
+  jobId: string;
+  totalVariations: number;
+  videos: VideoVariation[];
 }
 
 // --- API Response types (full wrapped responses used by service layer) ---
@@ -56,9 +64,9 @@ export interface AnalyzeApiResponse extends ApiResponse<{
 }> {}
 
 export interface GenerateVideoApiResponse extends ApiResponse<{
-  variations: string[];
-  jobId?: string;
-  totalVariations?: number;
+  jobId: string;
+  totalVariations: number;
+  videos: VideoVariation[];
 }> {}
 
 export interface AnalyzeRequest {
