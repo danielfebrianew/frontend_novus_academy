@@ -72,6 +72,7 @@ export interface GenerateVideoApiResponse extends ApiResponse<{
 export interface AnalyzeRequest {
   imageUrl: string;
   productName: string;
+  productDescription?: string;
   promptCount?: number;
 }
 
@@ -110,6 +111,7 @@ export interface VideoGeneratorState {
   progressValue: number;
   uploadedImageUrls: string[];
   productName: string;
+  productDescription: string;
   script: string;
   caption: string;
   prompts: string[];

@@ -45,6 +45,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
     loading,
     uploadedImageUrls,
     productName,
+    productDescription,
     prompts,
     script,
     targetCount,
@@ -119,6 +120,10 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       toast.error(TOAST_MESSAGES.NO_PRODUCT_NAME);
       return;
     }
+    if (!productDescription.trim()) {
+      toast.error("Masukkan deskripsi produk terlebih dahulu");
+      return;
+    }
 
     dispatch(setLoading(true));
     const uploadToastId = toast.loading(TOAST_MESSAGES.UPLOADING);
@@ -136,6 +141,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       const data = await generateApiService.analyzeImage({
         imageUrl: urls[0],
         productName: productName,
+        productDescription: productDescription.trim(),
         promptCount: urls.length,
       });
 
@@ -161,7 +167,7 @@ export function useVideoGeneration(countLimits: CountLimits): UseVideoGeneration
       dispatch(setLoading(false));
       dispatch(setLoadingMsg(""));
     }
-  }, [dispatch]);
+  }, [dispatch, productDescription]);
 
   /**
    * Step 2 → 3 → 4: Generate videos dengan SSE progress

@@ -7,6 +7,7 @@ interface VideoGeneratorState {
   progressValue: number;
   uploadedImageUrls: string[];
   productName: string;
+  productDescription: string;
   script: string;
   caption: string;
   prompts: string[];
@@ -24,6 +25,7 @@ const initialState: VideoGeneratorState = {
   progressValue: 0,
   uploadedImageUrls: [],
   productName: "",
+  productDescription: "",
   script: "",
   caption: "",
   prompts: [],
@@ -57,6 +59,9 @@ const videoGeneratorSlice = createSlice({
     },
     setProductName(state, action: PayloadAction<string>) {
       state.productName = action.payload;
+    },
+    setProductDescription(state, action: PayloadAction<string>) {
+      state.productDescription = action.payload;
     },
     setScript(state, action: PayloadAction<string>) {
       state.script = action.payload;
@@ -95,6 +100,7 @@ export const {
   setProgressValue,
   setUploadedImageUrls,
   setProductName,
+  setProductDescription,
   setScript,
   setCaption,
   setPrompts,
