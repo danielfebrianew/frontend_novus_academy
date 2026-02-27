@@ -1,6 +1,6 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PlayCircle, Layers, CalendarClock } from "lucide-react";
+import { PlayCircle, Layers, CalendarClock, Loader2, XCircle } from "lucide-react";
 
 interface JobCardProps {
   job: {
@@ -11,6 +11,7 @@ interface JobCardProps {
     videoCount: number;
     voiceGender: string | null;
     isPro: boolean;
+    status: "processing" | "success" | "fail";
     createdAt: string;
   };
   onClick: (jobId: string) => void;
@@ -66,10 +67,34 @@ export function JobCard({ job, onClick }: JobCardProps) {
           </div>
         )}
 
-        <Badge className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm hover:bg-black/80">
-          <Layers className="mr-1 h-3 w-3" />
-          {job.videoCount} Videos
-        </Badge>
+        {job.status === "processing" && (
+          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-white" />
+            <span className="text-white text-sm font-medium">Sedang Diproses</span>
+          </div>
+        )}
+
+        {job.status === "fail" && (
+          <div className="absolute inset-0 bg-red-900/50 flex flex-col items-center justify-center gap-2">
+            <XCircle className="h-8 w-8 text-red-300" />
+            <span className="text-red-200 text-sm font-medium">Gagal</span>
+          </div>
+        )}
+
+        {job.status === "processing" ? (
+          <Badge className="absolute bottom-2 right-2 bg-yellow-500/80 backdrop-blur-sm hover:bg-yellow-500/90 animate-pulse">
+            Processing
+          </Badge>
+        ) : job.status === "fail" ? (
+          <Badge className="absolute bottom-2 right-2 bg-red-600/80 backdrop-blur-sm hover:bg-red-600/90">
+            Gagal
+          </Badge>
+        ) : (
+          <Badge className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm hover:bg-black/80">
+            <Layers className="mr-1 h-3 w-3" />
+            {job.videoCount} Videos
+          </Badge>
+        )}
       </div>
 
       <CardContent className="p-4">

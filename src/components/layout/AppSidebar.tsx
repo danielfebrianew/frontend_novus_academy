@@ -4,13 +4,9 @@ import * as React from "react"
 import {
   Sparkles,
   FolderOpen,
-  CalendarClock,
-  Settings,
-  Users,
-  CreditCard,
   ChevronRight,
-  LineChart,
-  Activity,
+  // LineChart,
+  // Activity,
   Images,
   Clapperboard,
   ImagePlus,
@@ -59,29 +55,29 @@ const navMain = [
     icon: FolderOpen,
     items: [
       { title: "Assets Gallery", url: "/gallery", icon: Images },
-      { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
+      // { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
       // { title: "Caption Creation", url: "/prompts", icon: FileText },
     ],
   },
-  {
-    title: "Reports",
-    id: "reports",
-    url: "#",
-    icon: LineChart,
-    items: [
-      { title: "Revenue", url: "/reports", icon: Activity },
-    ],
-  },
-  {
-    title: "Settings",
-    id: "settings",
-    url: "#",
-    icon: Settings,
-    items: [
-      { title: "Tiktok Accounts", url: "/accounts", icon: Users },
-      { title: "Billing & Usage", url: "/billing", icon: CreditCard },
-    ],
-  },
+  // {
+  //   title: "Reports",
+  //   id: "reports",
+  //   url: "#",
+  //   icon: LineChart,
+  //   items: [
+  //     { title: "Revenue", url: "/reports", icon: Activity },
+  //   ],
+  // },
+  // {
+  //   title: "Settings",
+  //   id: "settings",
+  //   url: "#",
+  //   icon: Settings,
+  //   items: [
+  //     { title: "Tiktok Accounts", url: "/accounts", icon: Users },
+  //     { title: "Billing & Usage", url: "/billing", icon: CreditCard },
+  //   ],
+  // },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

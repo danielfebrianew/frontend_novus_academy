@@ -12,6 +12,8 @@ interface VideoGeneratorProState {
   productTitle: string;
   productDescription: string;
   imagePreview: string | null;
+  faceCharacter: string;
+  customFaceCharacter: string;
 }
 
 const initialState: VideoGeneratorProState = {
@@ -25,6 +27,8 @@ const initialState: VideoGeneratorProState = {
   productTitle: "",
   productDescription: "",
   imagePreview: null,
+  faceCharacter: "",
+  customFaceCharacter: "",
 };
 
 const videoGeneratorProSlice = createSlice({
@@ -61,6 +65,12 @@ const videoGeneratorProSlice = createSlice({
     setProImagePreview: (state, action: PayloadAction<string | null>) => {
       state.imagePreview = action.payload;
     },
+    setProFaceCharacter: (state, action: PayloadAction<string>) => {
+      state.faceCharacter = action.payload;
+    },
+    setProCustomFaceCharacter: (state, action: PayloadAction<string>) => {
+      state.customFaceCharacter = action.payload;
+    },
     resetPro: () => initialState,
   },
 });
@@ -76,6 +86,8 @@ export const {
   setProProductTitle,
   setProProductDescription,
   setProImagePreview,
+  setProFaceCharacter,
+  setProCustomFaceCharacter,
   resetPro,
 } = videoGeneratorProSlice.actions;
 export default videoGeneratorProSlice.reducer;

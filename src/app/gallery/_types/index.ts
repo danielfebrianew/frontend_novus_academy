@@ -27,6 +27,7 @@ export interface GalleryJobSummary {
   videoCount: number;
   voiceGender: "male" | "female" | null;
   isPro: boolean;
+  status: "processing" | "success" | "fail";
   createdAt: string;
 }
 
@@ -43,6 +44,8 @@ export interface VideoJobDetail {
   inputImages: string[];
   thumbnailUrl: string | null;
   isPro: boolean;
+  status: "processing" | "success" | "fail";
+  failMsg: string | null;
   createdAt: string;
   videos: VideoResult[];
 }

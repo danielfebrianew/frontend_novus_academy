@@ -17,10 +17,29 @@ import { useActiveJob } from '@/hooks/useActiveJob';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   setProLoading, setProTaskId, setProProgressMsg, setProSimulatedProgress,
   setProGeneratedPrompt, setProResultUrls, setProGenError,
-  setProProductTitle, setProProductDescription, setProImagePreview, resetPro,
+  setProProductTitle, setProProductDescription, setProImagePreview,
+  setProFaceCharacter, setProCustomFaceCharacter, resetPro,
 } from '@/store/videoGeneratorProSlice';
+
+const FACE_CHARACTER_OPTIONS = [
+  { value: 'remaja_wanita', label: 'Remaja Wanita (16-19)' },
+  { value: 'remaja_pria', label: 'Remaja Pria (16-19)' },
+  { value: 'wanita_casual', label: 'Wanita Casual (20-28)' },
+  { value: 'pria_casual', label: 'Pria Casual (20-30)' },
+  { value: 'wanita_hijab', label: 'Wanita Hijab Modern' },
+  { value: 'pria_professional', label: 'Pria Professional (25-40)' },
+  { value: 'wanita_karir', label: 'Wanita Karir (25-35)' },
+  { value: 'custom', label: 'Custom (tulis sendiri)' },
+] as const;
 
 const COLORS = {
   deepest: 'var(--background)',
@@ -42,6 +61,8 @@ export default function GenerateProPage() {
   const productTitle = useSelector((s: RootState) => s.videoGeneratorPro.productTitle);
   const productDescription = useSelector((s: RootState) => s.videoGeneratorPro.productDescription);
   const imagePreview = useSelector((s: RootState) => s.videoGeneratorPro.imagePreview);
+  const faceCharacter = useSelector((s: RootState) => s.videoGeneratorPro.faceCharacter);
+  const customFaceCharacter = useSelector((s: RootState) => s.videoGeneratorPro.customFaceCharacter);
 
   // Generation state — backed by Redux
   const dispatch = useDispatch<AppDispatch>();
@@ -92,16 +113,18 @@ export default function GenerateProPage() {
   useEffect(() => {
     const saved = localStorage.getItem('novus_pro_form');
     if (saved) {
-      const { productTitle: t, productDescription: d } = JSON.parse(saved);
+      const { productTitle: t, productDescription: d, faceCharacter: f, customFaceCharacter: cf } = JSON.parse(saved);
       if (t) dispatch(setProProductTitle(t));
       if (d) dispatch(setProProductDescription(d));
+      if (f) dispatch(setProFaceCharacter(f));
+      if (cf) dispatch(setProCustomFaceCharacter(cf));
     }
   }, []);
 
   // Persist form fields to localStorage on change
   useEffect(() => {
-    localStorage.setItem('novus_pro_form', JSON.stringify({ productTitle, productDescription }));
-  }, [productTitle, productDescription]);
+    localStorage.setItem('novus_pro_form', JSON.stringify({ productTitle, productDescription, faceCharacter, customFaceCharacter }));
+  }, [productTitle, productDescription, faceCharacter, customFaceCharacter]);
 
   // Smooth display progress ticker
   useEffect(() => {
@@ -305,9 +328,17 @@ export default function GenerateProPage() {
     dispatch(setProImagePreview(null));
   };
 
+  // Derived: is there an active/loading job blocking new submissions?
+  const hasActiveJob = !!(activeJob && !resultUrls && !genError) || isLoading;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+
+    if (activeJob) {
+      toast.error('Masih ada video yang sedang diproses. Tunggu sampai selesai.', { position: 'top-center' });
+      return;
+    }
 
     if (!imageFile || !productTitle.trim() || !productDescription.trim()) {
       toast.error('Semua field wajib diisi', { position: 'top-center' });
@@ -333,6 +364,13 @@ export default function GenerateProPage() {
       formData.append('jobId', jobId);
       formData.append('productTitle', productTitle.trim());
       formData.append('productDescription', productDescription.trim());
+
+      if (faceCharacter && faceCharacter !== 'custom') {
+        formData.append('faceCharacter', faceCharacter);
+      }
+      if (faceCharacter === 'custom' && customFaceCharacter.trim()) {
+        formData.append('customFaceCharacter', customFaceCharacter.trim());
+      }
 
       const data = await apiService.upload<CreateProResponse>('/api/v1/generate-pro/create', formData);
 
@@ -392,7 +430,7 @@ export default function GenerateProPage() {
   };
 
   const stepIconStyle = (status: 'pending' | 'active' | 'completed' | 'failed') => {
-    if (status === 'completed') return { backgroundColor: COLORS.medium, color: COLORS.mint };
+    if (status === 'completed') return { backgroundColor: COLORS.sage, color: '#ffffff' };
     if (status === 'active') return { backgroundColor: COLORS.forest, color: COLORS.sage };
     if (status === 'failed') return { backgroundColor: '#3b1010', color: '#f87171' };
     return { backgroundColor: COLORS.forest, color: 'color-mix(in oklch, var(--primary) 35%, transparent)' };
@@ -436,10 +474,10 @@ export default function GenerateProPage() {
               <CardDescription style={{ color: COLORS.sage }}>Upload foto dan masukkan detail produk.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading && activeJobReconnectedRef.current && (
+              {hasActiveJob && (
                 <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: COLORS.forest, borderColor: COLORS.medium, border: '1px solid', color: COLORS.mint }}>
                   <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
-                  <span>Anda memiliki generasi yang sedang berjalan. Harap tunggu hingga selesai.</span>
+                  <span>Video sedang diproses. Kamu tidak bisa membuat video baru sampai proses selesai.</span>
                 </div>
               )}
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -455,11 +493,11 @@ export default function GenerateProPage() {
                       className="hidden"
                       id="imageUpload"
                       onChange={handleFileChange}
-                      disabled={isLoading}
+                      disabled={hasActiveJob}
                     />
                     <Label
                       htmlFor="imageUpload"
-                      className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${hasActiveJob ? 'opacity-50 cursor-not-allowed' : ''}`}
                       style={{
                         borderColor: imagePreview ? COLORS.sage : COLORS.medium,
                         backgroundColor: imagePreview ? COLORS.forest : COLORS.deepest,
@@ -472,7 +510,7 @@ export default function GenerateProPage() {
                             alt="Preview"
                             className="w-full h-full object-cover rounded-lg opacity-80"
                           />
-                          {!isLoading && (
+                          {!hasActiveJob && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -497,7 +535,7 @@ export default function GenerateProPage() {
                     </Label>
                   </div>
                   <p className="text-xs" style={{ color: COLORS.medium }}>
-                    Foto ini akan dijadikan referensi visual (first frame) oleh Sora 2.
+                    Foto ini akan dijadikan referensi visual (first frame) oleh AI Novus.
                   </p>
                 </div>
 
@@ -511,7 +549,7 @@ export default function GenerateProPage() {
                     placeholder="Contoh: Sandal Wanita Hak Tahu 3cm"
                     value={productTitle}
                     onChange={(e) => dispatch(setProProductTitle(e.target.value))}
-                    disabled={isLoading}
+                    disabled={hasActiveJob}
                     required
                     style={{ backgroundColor: COLORS.deepest, borderColor: COLORS.forest, color: COLORS.mint }}
                     className="placeholder:opacity-40"
@@ -530,7 +568,7 @@ export default function GenerateProPage() {
                     rows={4}
                     value={productDescription}
                     onChange={(e) => dispatch(setProProductDescription(e.target.value))}
-                    disabled={isLoading}
+                    disabled={hasActiveJob}
                     required
                     style={{ backgroundColor: COLORS.deepest, borderColor: COLORS.forest, color: COLORS.mint }}
                   />
@@ -539,17 +577,59 @@ export default function GenerateProPage() {
                   </p>
                 </div>
 
+                {/* Face Character */}
+                <div className="space-y-1.5">
+                  <Label style={{ color: COLORS.mint }}>
+                    Karakter Wajah
+                  </Label>
+                  <Select
+                    value={faceCharacter}
+                    onValueChange={(val) => {
+                      dispatch(setProFaceCharacter(val));
+                      if (val !== 'custom') dispatch(setProCustomFaceCharacter(''));
+                    }}
+                    disabled={hasActiveJob}
+                  >
+                    <SelectTrigger
+                      style={{ backgroundColor: COLORS.deepest, borderColor: COLORS.forest, color: COLORS.mint }}
+                    >
+                      <SelectValue placeholder="Pilih karakter (opsional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FACE_CHARACTER_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {faceCharacter === 'custom' && (
+                    <Textarea
+                      placeholder="Contoh: A young Southeast Asian woman with short hair, wearing a denim jacket"
+                      className="resize-none placeholder:opacity-40 mt-2"
+                      rows={2}
+                      value={customFaceCharacter}
+                      onChange={(e) => dispatch(setProCustomFaceCharacter(e.target.value))}
+                      disabled={hasActiveJob}
+                      style={{ backgroundColor: COLORS.deepest, borderColor: COLORS.forest, color: COLORS.mint }}
+                    />
+                  )}
+                  <p className="text-xs" style={{ color: COLORS.medium }}>
+                    Opsional. Pilih karakter yang muncul di video, atau tulis sendiri.
+                  </p>
+                </div>
+
                 {/* Submit */}
                 <Button
                   type="submit"
                   className="w-full font-semibold transition-opacity hover:opacity-90"
-                  disabled={isLoading}
+                  disabled={hasActiveJob}
                   style={{ backgroundColor: COLORS.sage, color: COLORS.deepest }}
                 >
-                  {isLoading ? (
+                  {hasActiveJob ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      Sedang Memproses...
                     </>
                   ) : (
                     'Generate Video'
@@ -568,8 +648,17 @@ export default function GenerateProPage() {
             {/* Empty state */}
             {!isLoading && !resultUrls && !genError && !generatedPrompt && (
               <div className="min-h-[400px] flex flex-col items-center justify-center border-2 border-dashed rounded-xl" style={{ borderColor: COLORS.forest, backgroundColor: COLORS.dark, color: COLORS.medium }}>
-                <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                <p>Hasil video akan muncul di sini</p>
+                {isCheckingActiveJob ? (
+                  <>
+                    <Loader2 className="w-10 h-10 mb-4 animate-spin opacity-40" />
+                    <p>Mengecek status job...</p>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
+                    <p>Hasil video akan muncul di sini</p>
+                  </>
+                )}
               </div>
             )}
 

@@ -50,10 +50,10 @@ export function AppHeader() {
       <div className="ml-auto flex items-center gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center rounded-lg px-2 py-1 hover:bg-slate-100 transition-colors">
-              <Avatar className="h-8 w-8 rounded-lg">
+            <button className="flex items-center rounded-full px-2 py-1 hover:bg-slate-100 transition-colors">
+              <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={userData.avatar} alt={userData.name} />
-                <AvatarFallback className="rounded-lg text-xs">{userData.initials}</AvatarFallback>
+                <AvatarFallback className="rounded-full text-xs">{userData.initials}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>

@@ -48,7 +48,7 @@ export default function GeneratePage() {
       <div className="flex flex-col items-center gap-2">
         <KeyRound className="h-10 w-10 text-purple-500" />
         <h1 className="text-xl font-semibold">Generate Token</h1>
-        <p className="text-slate-500 text-sm">Generate token untuk akses Gemini Image Generator</p>
+        <p className="text-slate-500 text-sm">Generate token untuk akses Novus Image Generator</p>
       </div>
 
       <Button
@@ -82,12 +82,12 @@ export default function GeneratePage() {
 
           <Button asChild className="bg-purple-600 hover:bg-purple-700">
             <a
-              href="https://gemini.google.com/share/90b903b88a15"
+              href="https://gemini.google.com/share/02a85f2eff2c"
               target="_blank"
               rel="noopener noreferrer"
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              Buka di Gemini
+              Buka di Tab Baru
             </a>
           </Button>
         </div>

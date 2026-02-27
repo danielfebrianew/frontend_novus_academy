@@ -27,7 +27,7 @@ export function VideoResultCard({ urls }: VideoResultCardProps) {
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5" style={{ color: COLORS.sage }} />
         <h3 className="text-lg font-bold" style={{ color: COLORS.mint }}>Video Berhasil Dibuat</h3>
-        <Badge style={{ backgroundColor: COLORS.medium, color: COLORS.mint, borderColor: COLORS.forest }}>
+        <Badge style={{ backgroundColor: COLORS.sage, color: '#ffffff', borderColor: COLORS.sage }}>
           {urls.length} {urls.length === 1 ? 'video' : 'videos'}
         </Badge>
       </div>
