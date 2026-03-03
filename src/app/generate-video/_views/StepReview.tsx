@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { setScript, setStep, setTargetCount, setVoiceGender } from "@/store/videoGeneratorSlice";
-import { VOICE_OPTIONS } from "../_constants";
+import { VOICE_OPTIONS } from "../_utils/constants";
 import type { VideoGeneratorState, CountLimits } from "../_types";
 
 interface StepReviewProps {

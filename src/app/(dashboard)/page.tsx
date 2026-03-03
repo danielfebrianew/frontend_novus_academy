@@ -30,7 +30,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="p-6 text-center text-gray-500 border-t">
-        &copy; 2026 Novus Next Gen. All rights reserved.
+        &copy; 2025 Novus Next Gen. All rights reserved.
       </footer>
     </div>
   )

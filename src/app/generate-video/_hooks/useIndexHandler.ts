@@ -10,7 +10,7 @@ import {
   setCropperOpen 
 } from "@/store/videoGeneratorSlice";
 import { blobToFile, readFileAsDataUrl } from "../_utils/fileUtils";
-import { TOAST_MESSAGES } from "../_constants";
+import { TOAST_MESSAGES } from "../_utils/constants";
 
 interface UseImageHandlerReturn {
   // State

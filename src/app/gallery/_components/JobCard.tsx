@@ -11,13 +11,15 @@ interface JobCardProps {
     videoCount: number;
     voiceGender: string | null;
     isPro: boolean;
-    status: "processing" | "success" | "fail";
+    status: "processing" | "success" | "fail" | "failed";
     createdAt: string;
   };
   onClick: (jobId: string) => void;
 }
 
 export function JobCard({ job, onClick }: JobCardProps) {
+  const status = job.status === "failed" ? "fail" : job.status;
+
   const formatWIB = (dateString: string) => {
     if (!dateString) return "-";
 
@@ -53,39 +55,41 @@ export function JobCard({ job, onClick }: JobCardProps) {
       className="group cursor-pointer overflow-hidden transition-all hover:shadow-lg hover:border-primary/50"
       onClick={() => onClick(job.jobId)}
     >
-      <div className="relative aspect-video w-full bg-muted">
-        {job.thumbnailUrl ? (
-          <img
-            src={job.thumbnailUrl}
-            alt={job.productName}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-muted/50">
-            <PlayCircle className="h-12 w-12 text-muted-foreground/50" />
-          </div>
-        )}
+      <div className="relative aspect-video w-full bg-muted overflow-hidden ">
+        <div className="relative h-full w-full transition-transform duration-300 group-hover:scale-105">
+          {job.thumbnailUrl ? (
+            <img
+              src={job.thumbnailUrl}
+              alt={job.productName}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-muted/50">
+              <PlayCircle className="h-12 w-12 text-muted-foreground/50" />
+            </div>
+          )}
 
-        {job.status === "processing" && (
-          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
-            <span className="text-white text-sm font-medium">Sedang Diproses</span>
-          </div>
-        )}
+          {status === "processing" && (
+            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <span className="text-white text-sm font-medium">Sedang Diproses</span>
+            </div>
+          )}
 
-        {job.status === "fail" && (
-          <div className="absolute inset-0 bg-red-900/50 flex flex-col items-center justify-center gap-2">
-            <XCircle className="h-8 w-8 text-red-300" />
-            <span className="text-red-200 text-sm font-medium">Gagal</span>
-          </div>
-        )}
+          {status === "fail" && (
+            <div className="absolute inset-0 bg-red-900/50 flex flex-col items-center justify-center gap-2">
+              <XCircle className="h-8 w-8 text-red-300" />
+              <span className="text-red-200 text-sm font-medium">Gagal</span>
+            </div>
+          )}
+        </div>
 
-        {job.status === "processing" ? (
+        {status === "processing" ? (
           <Badge className="absolute bottom-2 right-2 bg-yellow-500/80 backdrop-blur-sm hover:bg-yellow-500/90 animate-pulse">
             Processing
           </Badge>
-        ) : job.status === "fail" ? (
+        ) : status === "fail" ? (
           <Badge className="absolute bottom-2 right-2 bg-red-600/80 backdrop-blur-sm hover:bg-red-600/90">
             Gagal
           </Badge>

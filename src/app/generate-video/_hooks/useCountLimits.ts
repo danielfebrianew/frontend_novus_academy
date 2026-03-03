@@ -5,7 +5,7 @@
 import { useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setTargetCount } from "@/store/videoGeneratorSlice";
-import { COUNT_LIMITS_CONFIG, DEFAULT_COUNT_LIMITS } from "../_constants";
+import { COUNT_LIMITS_CONFIG, DEFAULT_COUNT_LIMITS } from "../_utils/constants";
 import type { CountLimits, VideoGeneratorState } from "../_types";
 
 interface UseCountLimitsReturn {

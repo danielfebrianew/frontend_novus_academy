@@ -40,3 +40,11 @@ export interface StatusResponse {
     costTime: number;
   };
 }
+
+export interface VideoFormData {
+  imageFile: File;
+  productTitle: string;
+  productDescription: string;
+  faceCharacter: string;
+  customFaceCharacter: string;
+}

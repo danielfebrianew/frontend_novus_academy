@@ -5,8 +5,6 @@ import {
   Sparkles,
   FolderOpen,
   ChevronRight,
-  // LineChart,
-  // Activity,
   Images,
   Clapperboard,
   ImagePlus,
@@ -45,7 +43,6 @@ const navMain = [
       { title: "Video Generator", url: "/generate-video", icon: Clapperboard },
       { title: "Pro Video Generator", url: "/generate-pro", icon: Video },
       { title: "Image Generator ", url: "/generate-image", icon: ImagePlus },
-      // { title: "Video Mixer", url: "/video-mixer", icon: Shuffle },
     ],
   },
   {
@@ -55,29 +52,8 @@ const navMain = [
     icon: FolderOpen,
     items: [
       { title: "Assets Gallery", url: "/gallery", icon: Images },
-      // { title: "Post Scheduler", url: "/scheduler", icon: CalendarClock },
-      // { title: "Caption Creation", url: "/prompts", icon: FileText },
     ],
   },
-  // {
-  //   title: "Reports",
-  //   id: "reports",
-  //   url: "#",
-  //   icon: LineChart,
-  //   items: [
-  //     { title: "Revenue", url: "/reports", icon: Activity },
-  //   ],
-  // },
-  // {
-  //   title: "Settings",
-  //   id: "settings",
-  //   url: "#",
-  //   icon: Settings,
-  //   items: [
-  //     { title: "Tiktok Accounts", url: "/accounts", icon: Users },
-  //     { title: "Billing & Usage", url: "/billing", icon: CreditCard },
-  //   ],
-  // },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -94,7 +70,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         dispatch(setSectionOpen({ id: section.id, isOpen: true }))
       }
     })
-  }, [pathname, dispatch, expandedSections])
+  }, [pathname, dispatch])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -108,7 +84,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Collapsible
                   key={item.title}
                   asChild
-                  open={isOpen}
+                  defaultOpen={isOpen || item.items?.some((sub) => pathname.startsWith(sub.url))}
                   onOpenChange={() => dispatch(toggleSection(item.id))}
                   className="group/collapsible"
                 >

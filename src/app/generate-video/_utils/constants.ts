@@ -8,45 +8,48 @@ import type { CountLimits } from "../_types";
 export const TOAST_MESSAGES = {
   // Success
   CROP_SUCCESS: "Foto berhasil dipotong!",
-  ANALYZE_SUCCESS: "Analisa Selesai!",
-  CAPTION_COPIED: "Caption disalin!",
+  ANALYZE_SUCCESS: "Analisa selesai!",
+  CAPTION_COPIED: "Caption disalin ke clipboard!",
   
   // Loading
   UPLOADING: "Mengupload gambar...",
-  ANALYZING: "Menganalisa gambar & membuat aset...",
-  STARTING_ENGINE: "Memulai AI Engine...",
+  ANALYZING: "Menganalisa gambar & meracik aset...",
+  STARTING_ENGINE: "Memanaskan AI Engine...",
   
   // Validation
-  NO_FILES: "Belum ada foto yang dipilih!",
-  NO_PRODUCT_NAME: "Nama produk wajib diisi!",
+  NO_FILES: "Ups, belum ada foto yang dipilih nih!",
+  NO_PRODUCT_NAME: "Nama produk wajib diisi ya!",
 } as const;
 
 // --- Error Messages ---
 export const ERROR_MESSAGES = {
   // Upload errors
-  FILE_TOO_LARGE: "File terlalu besar. Maksimal 5MB per gambar.",
-  UNSUPPORTED_FORMAT: "Format file tidak didukung. Gunakan JPG/PNG.",
-  SERVER_ERROR: "Server sedang bermasalah. Coba lagi nanti.",
-  CONNECTION_ERROR: "Tidak dapat terhubung ke server. Periksa koneksi internet.",
+  FILE_TOO_LARGE: "Ukuran fotonya kegedean! Pastikan maksimal 5MB ya.",
+  UNSUPPORTED_FORMAT: "Format foto nggak didukung. Tolong pakai JPG atau PNG.",
   
-  // Generate errors
-  TIMEOUT: "Request timeout. Video terlalu banyak atau server sibuk.",
-  GENERATE_SERVER_ERROR: "Server error saat generate video. Coba kurangi jumlah variasi.",
-  RATE_LIMIT: "Terlalu banyak request. Tunggu beberapa menit.",
-  CONNECTION_LOST: "Koneksi terputus. Periksa internet dan coba lagi.",
+  // Generate & Server errors
+  SERVER_ERROR: "Server kita lagi kewalahan nih. Coba beberapa saat lagi ya.",
+  GENERATE_SERVER_ERROR: "Gagal merender video. Coba kurangi jumlah variasinya.",
+  RATE_LIMIT: "Kamu generate terlalu cepat. Santai dulu beberapa menit yuk.",
   
-  // Default
-  PROCESS_FAILED: "Gagal memproses gambar",
-  GENERATE_FAILED: "Gagal Generate Video",
+  // Network errors
+  CONNECTION_LOST: "Koneksi terputus nih. Coba cek Wi-Fi/kuota internet kamu dan ulangi ya.",
+  TIMEOUT: "Prosesnya butuh waktu terlalu lama. Boleh coba generate ulang?",
+  TIMEOUT_ERROR: "Prosesnya butuh waktu terlalu lama. Boleh coba generate ulang?",
+
+  // Default fallbacks
+  PROCESS_FAILED: "Duh, proses upload gagal. Coba cek gambarmu lagi.",
+  GENERATE_FAILED: "Waduh, gagal memproses videonya. Coba sesaat lagi ya.",
+  UNKNOWN_ERROR: "Terjadi kesalahan yang tidak diketahui. Coba ulangi lagi ya.",
 } as const;
 
 // --- Error Code Mapping ---
 export const ERROR_CODE_MAP: Record<string, string> = {
   "413": ERROR_MESSAGES.FILE_TOO_LARGE,
   "415": ERROR_MESSAGES.UNSUPPORTED_FORMAT,
-  "500": ERROR_MESSAGES.SERVER_ERROR,
   "429": ERROR_MESSAGES.RATE_LIMIT,
-  "Failed to fetch": ERROR_MESSAGES.CONNECTION_ERROR,
+  "500": ERROR_MESSAGES.SERVER_ERROR,
+  "Failed to fetch": ERROR_MESSAGES.CONNECTION_LOST,
   "timeout": ERROR_MESSAGES.TIMEOUT,
   "AbortError": ERROR_MESSAGES.TIMEOUT,
 };
@@ -66,7 +69,7 @@ export const DEFAULT_COUNT_LIMITS: CountLimits = {
 
 // --- Voice Gender Options ---
 export const VOICE_OPTIONS = [
-  { value: 'female', label: 'Wanita (Female) - Rekomendasi' },
+  { value: 'female', label: 'Wanita (Female)' },
   { value: 'male', label: 'Pria (Male)' },
 ] as const;
 
@@ -78,4 +81,4 @@ export const FILE_CONFIG = {
   CROP_ASPECT_RATIO: 9 / 16,
 } as const;
 
-export const TARGET_RATIO = 9 / 16;
+export const TARGET_RATIO = FILE_CONFIG.CROP_ASPECT_RATIO;

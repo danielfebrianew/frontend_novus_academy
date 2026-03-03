@@ -1,7 +1,3 @@
-// =============================================================================
-// GENERATE VIDEO API SERVICE
-// =============================================================================
-
 import {
   UploadApiResponse,
   AnalyzeRequest,
@@ -14,22 +10,9 @@ import { authService } from "@/lib/authService";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 // ============================================================================
-// HELPER: Upload Images
+// HELPER: DRY Error Handler
 // ============================================================================
-const uploadFiles = async (files: File[]): Promise<string[]> => {
-  const formData = new FormData();
-  files.forEach((file) => formData.append("files", file));
-
-  const token = authService.getAccessToken();
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/generate/upload`, {
-    method: 'POST',
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  });
-
+const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
@@ -43,108 +26,74 @@ const uploadFiles = async (files: File[]): Promise<string[]> => {
 
     throw new Error(errorMessage);
   }
-
-  const body: UploadApiResponse = await response.json();
-
-  if (body.data && body.data.imageUrls) {
-    return body.data.imageUrls;
-  }
-
-  throw new Error("Gagal mendapatkan URL gambar");
+  return response.json();
 };
 
 // ============================================================================
-// HELPER: Analyze Image
+// HELPER: Auth Header Builder
 // ============================================================================
-const analyzeImageData = async (payload: AnalyzeRequest) => {
+const getAuthHeaders = (isJson = false) => {
   const token = authService.getAccessToken();
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/generate/text`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: JSON.stringify({
-      promptCount: 4,
-      ...payload
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = `HTTP error! status: ${response.status}`;
-
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || errorMessage;
-    } catch {
-      errorMessage = errorText || errorMessage;
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const body: AnalyzeApiResponse = await response.json();
-  return body.data;
+  const headers: HeadersInit = {};
+  
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (isJson) headers['Content-Type'] = 'application/json';
+  
+  return headers;
 };
 
 // ============================================================================
-// HELPER: Generate Video
-// ============================================================================
-const generateVideoData = async (payload: GenerateVideoRequest) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 menit
-
-  try {
-    const token = authService.getAccessToken();
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/generate/video`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `HTTP error! status: ${response.status}`;
-
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-
-      throw new Error(errorMessage);
-    }
-
-    const body: GenerateVideoApiResponse = await response.json();
-    return body.data;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout setelah 15 menit');
-    }
-    throw error;
-  }
-};
-
-// ============================================================================
-// EXPORT: API Service
+// SERVICES
 // ============================================================================
 export const generateApiService = {
-  uploadImages: uploadFiles,
-  analyzeImage: analyzeImageData,
-  generateVideo: generateVideoData,
+  uploadImages: async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
 
-  // SSE Progress URL (EventSource doesn't support headers, so pass token via query param)
+    const response = await fetch(`${API_BASE_URL}/api/v1/generate/upload`, {
+      method: 'POST',
+      headers: getAuthHeaders(), // <-- Jauh lebih bersih
+      body: formData,
+    });
+
+    const body = await handleResponse<UploadApiResponse>(response); // <-- Error handling 1 baris
+    
+    if (body.data?.imageUrls) return body.data.imageUrls;
+    throw new Error("Gagal mendapatkan URL gambar");
+  },
+
+  analyzeImage: async (payload: AnalyzeRequest) => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/generate/text`, {
+      method: 'POST',
+      headers: getAuthHeaders(true),
+      body: JSON.stringify({ promptCount: 4, ...payload }),
+    });
+
+    const body = await handleResponse<AnalyzeApiResponse>(response);
+    return body.data;
+  },
+
+  generateVideo: async (payload: GenerateVideoRequest) => {
+    try {
+      // Menggunakan API Timeout modern (kalau jalan di environment modern)
+      // Kalau browser/node lawas error, tetap pakai AbortController & setTimeout kamu yang sebelumnya ya!
+      const response = await fetch(`${API_BASE_URL}/api/v1/generate/video`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(900000) // 15 Menit langsung di 1 baris
+      });
+
+      const body = await handleResponse<GenerateVideoApiResponse>(response);
+      return body.data;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new Error('Request timeout setelah 15 menit');
+      }
+      throw error;
+    }
+  },
+
   getProgressUrl: (jobId: string) => {
     const token = authService.getAccessToken();
     const url = `${API_BASE_URL}/api/v1/generate/progress/${jobId}`;

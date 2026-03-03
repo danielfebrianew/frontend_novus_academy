@@ -44,9 +44,9 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6">
+    <div className="h-screen flex flex-col items-center justify-start pt-20 gap-6 overflow-hidden">
       <div className="flex flex-col items-center gap-2">
-        <KeyRound className="h-10 w-10 text-purple-500" />
+        <KeyRound className="h-5 w-10 text-purple-500" />
         <h1 className="text-xl font-semibold">Generate Token</h1>
         <p className="text-slate-500 text-sm">Generate token untuk akses Novus Image Generator</p>
       </div>

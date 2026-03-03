@@ -12,14 +12,10 @@ import { useSelector } from "react-redux";
 import { useVideoGeneration } from "./_hooks/useVideoGeneration";
 import { useCountLimits } from "./_hooks/useCountLimits";
 
-// Components
-import { ProductNameInput } from "./_components/ProductNameInput";
-
 // Views
 import { StepUpload } from "./_views/StepUpload";
 import { StepReview } from "./_views/StepReview";
 import { StepGenerating } from "./_views/StepGenerating";
-import { StepResults } from "./_views/StepResults";
 
 // Types
 import type { VideoGeneratorState } from "./_types";
@@ -68,9 +64,6 @@ export default function VideoGeneratorPage() {
 
         {/* Step 3: Generating (Loading) */}
         {step === 3 && <StepGenerating />}
-
-        {/* Step 4: Results */}
-        {step === 4 && <StepResults />}
       </div>
     </div>
   );

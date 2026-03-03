@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import getCroppedImg, { PixelCrop } from '@/lib/cropImage'
+import getCroppedImg, { PixelCrop } from '@/utils/cropImage'
 import { Slider } from "@/components/ui/slider"
 
 interface ImageCropperProps {

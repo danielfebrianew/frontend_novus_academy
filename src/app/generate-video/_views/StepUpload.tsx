@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CropData, ImageFile, StepUploadProps } from "../_types";
-import { TARGET_RATIO } from "../_constants";
+import { TARGET_RATIO } from "../_utils/constants";
 import { ProductNameInput } from "../_components";
 
 // =============================================================================

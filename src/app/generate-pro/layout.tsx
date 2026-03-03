@@ -11,7 +11,7 @@ export default function GenerateProLayout({
     <SidebarProvider suppressHydrationWarning>
       <AppSidebar />
 
-      <main className="w-full min-h-screen bg-slate-50 transition-all duration-300 ease-in-out">
+      <main className="flex-1 min-h-screen bg-slate-50 transition-all duration-300 ease-in-out">
         <AppHeader />
 
         <div className="p-4 md:p-6">

@@ -1,10 +1,8 @@
 'use client';
 
-import { Download, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import toast from 'react-hot-toast';
 
 const COLORS = {
   deepest: 'var(--background)',
