@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(xargs cat:*)",
-      "Bash(xargs head -20)"
+      "Bash(xargs head -20)",
+      "Bash(xargs grep -l \"redirect\\\\|useRouter\")"
     ]
   }
 }

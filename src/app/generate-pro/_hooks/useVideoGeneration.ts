@@ -1,262 +1,224 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/store/store';
-import { useActiveJob } from '@/hooks/useActiveJob';
-import { authService } from '@/lib/authService';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
+import { useActiveJob } from '@/app/generate-pro/_hooks/useActiveJob';
 import apiService from '@/lib/fetch';
+import { authService } from '@/lib/authService';
 import toast from 'react-hot-toast';
 import {
   setProLoading, setProTaskId, setProProgressMsg, setProSimulatedProgress,
   setProGeneratedPrompt, setProResultUrls, setProGenError, resetPro,
 } from '@/store/videoGeneratorProSlice';
-import {
-  CreateProResponse, ProProgressEvent, StatusResponse, KieJobRecord, VideoFormData,
-} from '../_types';
-import { API_URL, FACE_CHARACTER_VALUE_MAP } from '../_utils/constants';
+import { CreateProResponse, StatusResponse, VideoFormData } from '../_types';
+import { FACE_CHARACTER_VALUE_MAP } from '../_utils/constants';
 
+// ─── Constants ──────────────────────────────────────────────────────────────
+const POLL_INTERVAL_MS = 8_000;
+const MAX_POLL_ATTEMPTS = 30;
+const PROGRESS_STORAGE_KEY = 'novus_pro_progress';
+
+/**
+ * Simulated progress curve:
+ *
+ *   1-10%  → 1% per detik (10s total, fase upload)
+ *   10-15% → 1% per 1.5 detik (7.5s total)
+ *   15-90% → 1% per 1 detik (75s total)
+ *   90-99% → 1% per 2 detik (18s total)
+ *   99%    → stuck, nunggu polling confirm
+ *   done   → loncat ke 100% (snap saat polling success)
+ */
+const PROGRESS_STAGES: { targetProgress: number; intervalMs: number }[] = [
+  { targetProgress: 10, intervalMs: 1_000 },   // 1% per detik
+  { targetProgress: 90, intervalMs: 1_000 },   // 1% per 1 detik
+  { targetProgress: 99, intervalMs: 2_000 },   // 1% per 2 detik
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+type TimerRef = React.RefObject<NodeJS.Timeout | null>;
+const clearTimer = (r: TimerRef) => { if (r.current) { clearTimeout(r.current); r.current = null; } };
+const clearTicker = (r: TimerRef) => { if (r.current) { clearInterval(r.current); r.current = null; } };
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 export function useVideoGeneration() {
   const { activeJob, isCheckingActiveJob, clearActiveJob } = useActiveJob();
   const dispatch = useDispatch<AppDispatch>();
 
-  const simulatedProgress = useSelector((s: RootState) => s.videoGeneratorPro.simulatedProgress);
-  const generatedPrompt = useSelector((s: RootState) => s.videoGeneratorPro.generatedPrompt);
-  const taskId = useSelector((s: RootState) => s.videoGeneratorPro.taskId);
-
-  const [displayProgress, setDisplayProgress] = useState<number | null>(null);
+  const [displayProgress, setDisplayProgress] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = sessionStorage.getItem(PROGRESS_STORAGE_KEY);
+    return saved ? Number(saved) : null;
+  });
   const lastPositiveProgressRef = useRef(0);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const simTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tickerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollCountRef = useRef(0);
+  const isPollingRef = useRef(false);
+
   const clearActiveJobRef = useRef(clearActiveJob);
   clearActiveJobRef.current = clearActiveJob;
   const activeJobReconnectedRef = useRef(false);
 
-  // Track last positive progress during render (for failed state display)
   if (displayProgress !== null && displayProgress > 0) {
     lastPositiveProgressRef.current = displayProgress;
   }
 
-  const cleanupSSE = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+  // ── Persist progress to sessionStorage ──────────────────────────────────
+  useEffect(() => {
+    if (displayProgress !== null && displayProgress > 0 && displayProgress < 100) {
+      sessionStorage.setItem(PROGRESS_STORAGE_KEY, String(displayProgress));
     }
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
-    }
-    if (simTimerRef.current) {
-      clearTimeout(simTimerRef.current);
-      simTimerRef.current = null;
-    }
-    if (tickerRef.current) {
-      clearInterval(tickerRef.current);
-      tickerRef.current = null;
-    }
+  }, [displayProgress]);
+
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+  const cleanup = useCallback(() => {
+    clearTimer(pollTimerRef);
+    clearTimer(stageTimerRef);
+    clearTicker(tickerRef);
+    isPollingRef.current = false;
+    pollCountRef.current = 0;
   }, []);
 
-  useEffect(() => {
-    return () => cleanupSSE();
-  }, [cleanupSSE]);
+  useEffect(() => () => cleanup(), [cleanup]);
 
-  // Smooth display progress ticker
-  useEffect(() => {
-    if (simulatedProgress === null) {
-      setDisplayProgress(null);
-      if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
-      return;
-    }
-    if (simulatedProgress === -1 || simulatedProgress === 100) {
-      setDisplayProgress(simulatedProgress);
-      if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
-      return;
-    }
+  // ── Snap helpers ───────────────────────────────────────────────────────────
+  const snapToComplete = useCallback(() => { clearTicker(tickerRef); setDisplayProgress(100); sessionStorage.removeItem(PROGRESS_STORAGE_KEY); }, []);
+  const snapToFailed = useCallback(() => { clearTicker(tickerRef); setDisplayProgress(-1); sessionStorage.removeItem(PROGRESS_STORAGE_KEY); }, []);
 
-    let intervalMs = 150;
-    let maxTarget = simulatedProgress;
+  // ── Simulated progress (supports resuming from a saved value) ─────────────
+  const startSimulatedProgress = useCallback((fromProgress = 1) => {
+    setDisplayProgress(fromProgress);
+    clearTicker(tickerRef);
+    clearTimer(stageTimerRef);
 
-    if (simulatedProgress === 15) {
-      // 1 → 15 in ~10s
-      intervalMs = 700; // 14 × 700ms ≈ 9.8s
-    } else if (simulatedProgress === 30) {
-      // 15→30 in ~30s: 15 steps × 2000ms = 30s
-      intervalMs = 2000;
-    } else if (simulatedProgress === 60) {
-      // 60→99 in ~2 min: 39 steps × 3077ms
-      intervalMs = 3077;
-      maxTarget = 99;
+    // Find the correct stage to resume from
+    let stageIndex = 0;
+    while (stageIndex < PROGRESS_STAGES.length && fromProgress >= PROGRESS_STAGES[stageIndex].targetProgress) {
+      stageIndex++;
     }
 
-    if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
-    tickerRef.current = setInterval(() => {
-      setDisplayProgress((prev) => {
-        const current = prev ?? 0;
-        if (current >= maxTarget) {
-          clearInterval(tickerRef.current!);
-          tickerRef.current = null;
-          return maxTarget;
+    let currentProgress = fromProgress;
+
+    const runNextStage = () => {
+      if (stageIndex >= PROGRESS_STAGES.length) return;
+
+      const { targetProgress, intervalMs } = PROGRESS_STAGES[stageIndex];
+      if (currentProgress >= targetProgress) { stageIndex++; runNextStage(); return; }
+
+      clearTicker(tickerRef);
+      tickerRef.current = setInterval(() => {
+        currentProgress += 1;
+        setDisplayProgress(currentProgress);
+
+        if (currentProgress >= targetProgress) {
+          clearTicker(tickerRef);
+          stageIndex++;
+          stageTimerRef.current = setTimeout(runNextStage, 300);
         }
-        return Math.min(current + 1, maxTarget);
-      });
-    }, intervalMs);
-    return () => {
-      if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
+      }, intervalMs);
     };
-  }, [simulatedProgress]);
 
-  const queryFallbackStatus = useCallback(async (fallbackTaskId: string) => {
+    runNextStage();
+  }, []);
+
+  // ── HTTP Polling ───────────────────────────────────────────────────────────
+  const pollStatus = useCallback(async (activeTaskId: string) => {
+    if (!isPollingRef.current) return;
+
+    pollCountRef.current += 1;
+
+    if (pollCountRef.current > MAX_POLL_ATTEMPTS) {
+      cleanup();
+      snapToFailed();
+      dispatch(setProGenError('Silakan coba lagi.'));
+      dispatch(setProLoading(false));
+      return;
+    }
+
     try {
-      const data = await apiService.get<StatusResponse>(`/api/v1/generate-pro/status/${fallbackTaskId}`);
+      const data = await apiService.get<StatusResponse>(
+        `/api/v1/generate-pro/status/${activeTaskId}`,
+      );
       const { state, resultUrls, failMsg } = data.data;
 
       if (state === 'success') {
+        cleanup();
+        snapToComplete();
         dispatch(setProSimulatedProgress(100));
         dispatch(setProResultUrls(resultUrls));
         dispatch(setProLoading(false));
         clearActiveJobRef.current();
         toast.success('Video berhasil dibuat!');
-      } else if (state === 'fail') {
+        return;
+      }
+
+      if (state === 'fail') {
+        cleanup();
+        snapToFailed();
         dispatch(setProSimulatedProgress(-1));
         dispatch(setProGenError(failMsg || 'Generate video gagal'));
         dispatch(setProLoading(false));
         clearActiveJobRef.current();
         toast.error(failMsg || 'Generate video gagal');
-      } else {
-        dispatch(setProProgressMsg('Menunggu hasil video (polling)...'));
-        fallbackTimerRef.current = setTimeout(() => queryFallbackStatus(fallbackTaskId), 5000);
+        return;
       }
+
+      // Masih proses — jadwalkan poll berikutnya
+      dispatch(setProProgressMsg('Video sedang diproses...'));
+      pollTimerRef.current = setTimeout(() => pollStatus(activeTaskId), POLL_INTERVAL_MS);
     } catch (err) {
-      console.error('Fallback status error:', err);
-      dispatch(setProGenError('Gagal mengecek status video'));
-      dispatch(setProLoading(false));
+      console.error('Poll error:', err);
+      // Retry on network hiccup, jangan langsung fail
+      pollTimerRef.current = setTimeout(() => pollStatus(activeTaskId), POLL_INTERVAL_MS);
     }
-  }, [dispatch]);
+  }, [cleanup, snapToComplete, snapToFailed, dispatch]);
 
-  const pollKieStatus = useCallback(async (kieTaskId: string) => {
-    const apiKey = process.env.NEXT_PUBLIC_KIE_API_KEY;
-    try {
-      const res = await fetch(
-        `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${kieTaskId}`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
-      const json: KieJobRecord = await res.json();
-      if (json.data.state === 'success') {
-        const parsed = JSON.parse(json.data.resultJson!);
-        dispatch(setProResultUrls(parsed.resultUrls));
-        dispatch(setProSimulatedProgress(100));
-        dispatch(setProLoading(false));
-        clearActiveJobRef.current();
-        toast.success('Video berhasil dibuat!');
-      } else if (json.data.state === 'fail') {
-        dispatch(setProSimulatedProgress(-1));
-        dispatch(setProGenError(json.data.failMsg || 'Generate video gagal'));
-        dispatch(setProLoading(false));
-        clearActiveJobRef.current();
-      } else {
-        simTimerRef.current = setTimeout(() => pollKieStatus(kieTaskId), 30000);
-      }
-    } catch {
-      dispatch(setProGenError('Gagal mengecek status video dari kie.ai'));
-      dispatch(setProSimulatedProgress(-1));
-      dispatch(setProLoading(false));
-    }
-  }, [dispatch]);
+  // ── Start polling (progress sudah jalan dari submit) ─────────────────────
+  const startJob = useCallback((activeTaskId: string) => {
+    pollCountRef.current = 0;
+    isPollingRef.current = true;
+    pollTimerRef.current = setTimeout(() => pollStatus(activeTaskId), POLL_INTERVAL_MS);
+  }, [pollStatus]);
 
-  const setupSSE = useCallback((jobId: string, token: string | null, fallbackTaskId: string | null) => {
-    const progressUrl = `${API_URL}/api/v1/generate-pro/progress/${jobId}${token ? `?token=${token}` : ''}`;
-    const eventSource = new EventSource(progressUrl);
-    eventSourceRef.current = eventSource;
-
-    eventSource.onmessage = (event) => {
-      try {
-        const parsed = JSON.parse(event.data);
-        const data: ProProgressEvent = parsed.data || parsed;
-
-        if (data.message) dispatch(setProProgressMsg(data.message));
-
-        if (data.progress === 100) {
-          dispatch(setProSimulatedProgress(100));
-          dispatch(setProResultUrls(data.resultUrls));
-          cleanupSSE();
-          dispatch(setProLoading(false));
-          clearActiveJobRef.current();
-          toast.success('Video berhasil dibuat!');
-        } else if (data.progress === -1) {
-          dispatch(setProSimulatedProgress(-1));
-          dispatch(setProGenError(data.failMsg || 'Terjadi kesalahan saat generate video'));
-          cleanupSSE();
-          dispatch(setProLoading(false));
-          clearActiveJobRef.current();
-          toast.error(data.failMsg || 'Generate video gagal');
-        }
-      } catch (err) {
-        console.error('Error parsing SSE:', err);
-      }
-    };
-
-    eventSource.onerror = () => {
-      if (eventSource.readyState === EventSource.CLOSED) {
-        console.error('SSE connection closed, falling back to status polling');
-        cleanupSSE();
-        if (fallbackTaskId) {
-          queryFallbackStatus(fallbackTaskId);
-        } else {
-          dispatch(setProGenError('Koneksi SSE terputus dan tidak ada fallback tersedia'));
-          dispatch(setProLoading(false));
-        }
-      }
-    };
-  }, [cleanupSSE, queryFallbackStatus, dispatch]);
-
-  // Reconnect to active job on mount
+  // ── Reconnect active job on mount ──────────────────────────────────────────
   useEffect(() => {
     if (isCheckingActiveJob) return;
-
-    if (!activeJob) {
-      dispatch(setProLoading(false));
-      return;
-    }
-    
+    if (!activeJob) { dispatch(setProLoading(false)); return; }
     if (activeJobReconnectedRef.current) return;
 
     activeJobReconnectedRef.current = true;
     dispatch(setProLoading(true));
     dispatch(setProProgressMsg('Menghubungkan ulang ke job aktif...'));
     dispatch(setProTaskId(activeJob.taskId));
-    setupSSE(activeJob.jobId, authService.getAccessToken(), activeJob.taskId);
-  }, [isCheckingActiveJob, activeJob, setupSSE, dispatch]);
 
-  // Start simulated progress + Kie polling when generatedPrompt arrives
-  useEffect(() => {
-    if (!generatedPrompt || !taskId) return;
-    dispatch(setProSimulatedProgress(15));
-    simTimerRef.current = setTimeout(() => {
-      dispatch(setProSimulatedProgress(30));
-      simTimerRef.current = setTimeout(() => {
-        dispatch(setProSimulatedProgress(60));
-        pollKieStatus(taskId);
-      }, 30000);
-    }, 5000);
-  }, [generatedPrompt, taskId, pollKieStatus, dispatch]);
+    const saved = sessionStorage.getItem(PROGRESS_STORAGE_KEY);
+    const resumeFrom = saved ? Math.min(Number(saved), 99) : 1;
+    startSimulatedProgress(resumeFrom);
+    startJob(activeJob.taskId);
+  }, [isCheckingActiveJob, activeJob, startSimulatedProgress, startJob, dispatch]);
 
+  // ── Submit job ─────────────────────────────────────────────────────────────
   const submitVideoJob = useCallback(async ({
     imageFile, productTitle, productDescription, faceCharacter, customFaceCharacter,
   }: VideoFormData) => {
-    cleanupSSE();
+    cleanup();
     lastPositiveProgressRef.current = 0;
+
     dispatch(setProLoading(true));
-    dispatch(setProSimulatedProgress(1));
-    dispatch(setProProgressMsg(''));
+    dispatch(setProProgressMsg('Mengupload file...'));
     dispatch(setProGeneratedPrompt(null));
     dispatch(setProResultUrls(null));
     dispatch(setProGenError(null));
 
+    // Mulai simulated progress langsung (1→10→15%)
+    setDisplayProgress(1);
+    startSimulatedProgress();
+
     const jobId = crypto.randomUUID();
-    const loadingToast = toast.loading('Mengirim task ke Ai Generator...', { position: 'top-center' });
+    const loadingToast = toast.loading('Mengupload file...', { position: 'top-center' });
 
     try {
       const formData = new FormData();
@@ -266,41 +228,74 @@ export function useVideoGeneration() {
       formData.append('productDescription', productDescription.trim());
 
       if (faceCharacter && faceCharacter !== 'custom') {
-        const mappedValue = FACE_CHARACTER_VALUE_MAP[faceCharacter] ?? faceCharacter;
-        formData.append('faceCharacter', mappedValue);
+        formData.append('faceCharacter', FACE_CHARACTER_VALUE_MAP[faceCharacter] ?? faceCharacter);
       }
       if (faceCharacter === 'custom' && customFaceCharacter.trim()) {
         formData.append('customFaceCharacter', customFaceCharacter.trim());
       }
 
-      const data = await apiService.upload<CreateProResponse>('/api/v1/generate-pro/create', formData);
+      // Upload via XHR
+      const data = await new Promise<CreateProResponse>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        xhr.open('POST', `${apiBaseUrl}/api/v1/generate-pro/create`);
+
+        const token = authService.getAccessToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.withCredentials = true;
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch { reject(new Error('Invalid response from server')); }
+          } else {
+            let msg = `HTTP error! status: ${xhr.status}`;
+            try {
+              const body = JSON.parse(xhr.responseText);
+              // Backend now returns InternalServerErrorException with proper message
+              msg = body.message || msg;
+            } catch { /* ignore parse errors */ }
+            reject(new Error(msg));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Tidak dapat terhubung ke server'));
+        xhr.send(formData);
+      });
+
       toast.dismiss(loadingToast);
       toast.success('Task dikirim! Menunggu hasil video...', { position: 'top-center' });
+      dispatch(setProProgressMsg('Video sedang diproses...'));
 
-      if (data.data.generatedPrompt) {
-        dispatch(setProGeneratedPrompt(data.data.generatedPrompt));
-      }
-      dispatch(setProTaskId(data.data.taskId));
-      setupSSE(data.data.jobId || jobId, authService.getAccessToken(), data.data.taskId);
+      if (data.data.generatedPrompt) dispatch(setProGeneratedPrompt(data.data.generatedPrompt));
+
+      const resolvedTaskId = data.data.taskId;
+      dispatch(setProTaskId(resolvedTaskId));
+      startJob(resolvedTaskId);
     } catch (error: unknown) {
       toast.dismiss(loadingToast);
+      cleanup();
+      snapToFailed();
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan sistem';
-      toast.error(message, { position: 'top-center' });
+      dispatch(setProGenError(message));
       dispatch(setProLoading(false));
+      toast.error(message, { position: 'top-center' });
     }
-  }, [cleanupSSE, dispatch, setupSSE]);
+  }, [cleanup, snapToFailed, startSimulatedProgress, startJob, dispatch]);
 
+  // ── Reset ──────────────────────────────────────────────────────────────────
   const cleanupAndReset = useCallback(() => {
-    cleanupSSE();
+    cleanup();
+    setDisplayProgress(null);
+    sessionStorage.removeItem(PROGRESS_STORAGE_KEY);
     dispatch(resetPro());
     localStorage.removeItem('novus_pro_form');
-  }, [cleanupSSE, dispatch]);
+  }, [cleanup, dispatch]);
 
   return {
     displayProgress,
     lastPositiveProgressRef,
     submitVideoJob,
-    cleanupSSE,
     cleanupAndReset,
     activeJob,
     isCheckingActiveJob,

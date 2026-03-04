@@ -9,22 +9,15 @@ export interface ActiveJobData {
   status: 'processing';
 }
 
-interface ApiResponse<T> {
-  statusCode: number;
-  message: string;
-  data: T;
-}
-
-const fetcher = async <T>(url: string): Promise<ApiResponse<T>> => {
-  return apiService.get<ApiResponse<T>>(url);
-};
-
 export function useActiveJob() {
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
 
-  const { data, isLoading, mutate } = useSWR<ApiResponse<ActiveJobData | null>>(
+  const { data, isLoading, mutate } = useSWR<ActiveJobData | null>(
     accessToken ? '/api/v1/generate-pro/active-job' : null,
-    fetcher,
+    async (url: string) => {
+      const res = await apiService.get<{ data: ActiveJobData | null }>(url);
+      return res.data ?? null; // langsung unwrap .data di fetcher
+    },
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
@@ -34,9 +27,8 @@ export function useActiveJob() {
   );
 
   return {
-    activeJob: data?.data ?? null,
+    activeJob: data ?? null,          // sudah ActiveJobData | null, tidak perlu .data lagi
     isCheckingActiveJob: isLoading,
-    clearActiveJob: () =>
-      mutate({ statusCode: 200, message: 'ok', data: null }, false),
+    clearActiveJob: () => mutate(null, false),
   };
 }

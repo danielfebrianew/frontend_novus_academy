@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { logout } from '@/store/authSlice';
 import { authService } from '@/lib/authService';
-import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LogOut, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function AppHeader() {
   const router = useRouter();
@@ -32,14 +32,12 @@ export function AppHeader() {
 
   const handleLogout = async () => {
     try {
-      await authService.logout();
+      await authService.logout(); // hapus cookie + clear accessToken
     } catch (error) {
       console.error(error);
     } finally {
-      localStorage.removeItem('currentUser');
-      dispatch(logout());
-      router.push('/login');
-      router.refresh();
+      dispatch(logout());         // clear Redux state
+      window.location.href = '/login'; // hard redirect — bersih, no conflict
     }
   };
 

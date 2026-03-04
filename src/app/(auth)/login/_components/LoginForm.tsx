@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -36,16 +35,12 @@ const formSchema = z.object({
 })
 
 export function LoginForm() {
-  const router = useRouter()
   const dispatch = useDispatch()
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -57,15 +52,14 @@ export function LoginForm() {
       const accessToken = authService.getAccessToken()
 
       dispatch(setUser(user))
-      if (accessToken) {
-        dispatch(setAccessToken(accessToken))
-      }
+      if (accessToken) dispatch(setAccessToken(accessToken))
 
       toast.dismiss(loadingToastId)
       toast.success(`Selamat datang, ${user.name || 'User'}!`)
 
-      router.push("/generate-video")
-      router.refresh()
+      // Hard redirect setelah login — sama seperti logout,
+      // biar Redux + cookie state fresh dari awal
+      window.location.href = '/generate-video'
 
     } catch (error: unknown) {
       toast.dismiss(loadingToastId)
@@ -73,25 +67,21 @@ export function LoginForm() {
       let errorMessage = "Terjadi kesalahan pada server."
 
       if (error instanceof Error) {
-        errorMessage = error.message
-
-        if (error.message.includes("401")) {
+        const msg = error.message
+        if (msg.includes("401") || msg.includes("400")) {
           errorMessage = "Email atau password salah."
-        } else if (error.message.includes("400")) {
-          errorMessage = error.message.includes("HTTP error")
-            ? "Email atau password salah."
-            : error.message
-        } else if (error.message.includes("429")) {
+        } else if (msg.includes("429")) {
           errorMessage = "Terlalu banyak percobaan. Coba lagi nanti."
-        } else if (error.message.includes("500")) {
+        } else if (msg.includes("500")) {
           errorMessage = "Server sedang bermasalah. Hubungi admin."
-        } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
           errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet."
+        } else {
+          errorMessage = msg
         }
       }
 
       toast.error(errorMessage, { duration: 4000 })
-
     } finally {
       setIsLoading(false)
     }
@@ -119,7 +109,6 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="password"
@@ -133,7 +122,6 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-
             <Button type="submit" className="w-full bg-blue-600 text-white" disabled={isLoading}>
               {isLoading ? "Loading..." : "Masuk"}
             </Button>

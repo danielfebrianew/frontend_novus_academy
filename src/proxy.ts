@@ -9,7 +9,7 @@ export default function proxy(request: NextRequest) {
   const hasSession = request.cookies.has('novus_rt');
 
   if (isPublicRoute && hasSession) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/generate-video', request.url));
   }
 
   if (!isPublicRoute && !hasSession) {
