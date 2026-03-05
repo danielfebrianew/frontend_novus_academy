@@ -12,29 +12,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { setScript, setStep, setTargetCount, setVoiceGender } from "@/store/videoGeneratorSlice";
 import { VOICE_OPTIONS } from "../_utils/constants";
 import type { VideoGeneratorState, CountLimits } from "../_types";
-
+import { Badge } from "@/components/ui/badge";
 interface StepReviewProps {
   countLimits: CountLimits;
   onGenerateVideo: () => void;
+  credits: number;
 }
 
-export function StepReview({ countLimits, onGenerateVideo }: StepReviewProps) {
+export function StepReview({ countLimits, onGenerateVideo, credits }: StepReviewProps) {
   const dispatch = useDispatch();
-  
+
   const { script, targetCount, voiceGender } = useSelector(
     (state: { videoGenerator: VideoGeneratorState }) => state.videoGenerator
   );
 
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto w-full">
-      
+
       {/* GRID CONTAINER: Berdampingan (Kiri: Config, Kanan: Script) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-        
+
         {/* LEFT COLUMN: CONFIGURATION (Tanpa Judul Header) */}
         <Card className="border-blue-200 bg-blue-50/30 shadow-none h-full">
           <CardContent className="space-y-6 pt-6">
-            
+
             {/* Variation Count Slider */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -110,6 +111,21 @@ export function StepReview({ countLimits, onGenerateVideo }: StepReviewProps) {
         </Card>
       </div>
 
+      {/* CREDITS INFO */}
+      <div className="flex items-center justify-between px-2">
+        <span className="text-sm font-medium text-slate-700">
+          Saldo Credit: <strong className="text-blue-600">{credits}</strong>
+        </span>
+        <Badge variant={credits >= targetCount ? 'outline' : 'destructive'} className={credits >= targetCount ? 'border-blue-200 text-blue-700 bg-blue-50' : ''}>
+          Biaya: {targetCount} Credit
+        </Badge>
+      </div>
+      {credits < targetCount && (
+        <p className="text-xs text-red-500 px-2 -mt-4">
+          Credit kamu tidak cukup untuk generate {targetCount} video.
+        </p>
+      )}
+
       {/* ACTION BUTTONS */}
       <div className="flex gap-4 pt-2">
         <Button
@@ -122,7 +138,8 @@ export function StepReview({ countLimits, onGenerateVideo }: StepReviewProps) {
 
         <Button
           onClick={onGenerateVideo}
-          className="flex-3 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all h-12 text-base font-semibold"
+          disabled={credits < targetCount}
+          className="flex-3 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all h-12 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play className="w-5 h-5 mr-2 fill-current" />
           Generate {targetCount} Videos

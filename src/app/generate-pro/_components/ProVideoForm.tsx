@@ -23,6 +23,7 @@ import {
 } from '@/store/videoGeneratorProSlice';
 import { FACE_CHARACTER_OPTIONS, COLORS } from '../_utils/constants';
 import { VideoFormData } from '../_types';
+import { Badge } from '@/components/ui/badge';
 
 interface ProVideoFormProps {
   onSubmit: (data: VideoFormData) => Promise<void>;
@@ -38,6 +39,10 @@ export function ProVideoForm({ onSubmit, hasActiveJob }: ProVideoFormProps) {
   const imagePreview = useSelector((s: RootState) => s.videoGeneratorPro.imagePreview);
   const faceCharacter = useSelector((s: RootState) => s.videoGeneratorPro.faceCharacter);
   const customFaceCharacter = useSelector((s: RootState) => s.videoGeneratorPro.customFaceCharacter);
+
+  const credits = useSelector((s: RootState) => s.auth.user?.credits || 0);
+  const REQUIRED_CREDITS = 20;
+  const hasEnoughCredits = credits >= REQUIRED_CREDITS;
 
   // Restore persisted form fields on mount
   useEffect(() => {
@@ -226,12 +231,27 @@ export function ProVideoForm({ onSubmit, hasActiveJob }: ProVideoFormProps) {
             </p>
           </div>
 
+          <div className="flex items-center justify-between pb-2">
+            <span className="text-sm" style={{ color: COLORS.sage }}>
+              Saldo Credit: <strong style={{ color: COLORS.mint }}>{credits}</strong>
+            </span>
+            <Badge variant={hasEnoughCredits ? 'outline' : 'destructive'} className={hasEnoughCredits ? 'border-none' : ''} style={hasEnoughCredits ? { backgroundColor: COLORS.forest, color: COLORS.mint } : undefined}>
+              Biaya: {REQUIRED_CREDITS} Credit
+            </Badge>
+          </div>
+
+          {!hasEnoughCredits && (
+            <p className="text-xs text-red-500 mb-2">
+              Credit kamu tidak cukup untuk generate video ini. Butuh {REQUIRED_CREDITS} credit.
+            </p>
+          )}
+
           {/* Submit */}
           <Button
             type="submit"
             className="w-full font-semibold transition-opacity hover:opacity-90"
-            disabled={hasActiveJob}
-            style={{ backgroundColor: COLORS.sage, color: COLORS.deepest }}
+            disabled={hasActiveJob || !hasEnoughCredits}
+            style={{ backgroundColor: (!hasActiveJob && hasEnoughCredits) ? COLORS.sage : COLORS.medium, color: COLORS.deepest }}
           >
             {hasActiveJob ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sedang Memproses...</>

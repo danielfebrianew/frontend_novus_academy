@@ -13,7 +13,7 @@ export default function proxy(request: NextRequest) {
   }
 
   if (!isPublicRoute && !hasSession) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/login?expired=true', request.url));
   }
 
   return NextResponse.next();

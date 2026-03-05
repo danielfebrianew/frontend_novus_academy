@@ -9,6 +9,9 @@ import {
   Clapperboard,
   ImagePlus,
   Video,
+  ReceiptText,
+  Clock,
+  ArrowDownLeft,
 } from "lucide-react"
 import {
   Collapsible,
@@ -54,6 +57,16 @@ const navMain = [
       { title: "Assets Gallery", url: "/gallery", icon: Images },
     ],
   },
+  {
+    title: "Billing & Finance",
+    id: "billing",
+    url: "#",
+    icon: ReceiptText,
+    items: [
+      { title: "Top Up Deposit", url: "/deposit", icon: ArrowDownLeft },
+      { title: "History Saldo", url: "/history-saldo", icon: Clock },
+    ],
+  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -88,15 +101,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   onOpenChange={() => dispatch(toggleSection(item.id))}
                   className="group/collapsible"
                 >
-                  <SidebarMenuItem>
+                  <SidebarMenuItem suppressHydrationWarning>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
+                      <SidebarMenuButton tooltip={item.title} suppressHydrationWarning>
                         {item.icon && <item.icon />}
-                        <span>{item.title}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        <span suppressHydrationWarning>{item.title}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" suppressHydrationWarning />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <CollapsibleContent>
+                    <CollapsibleContent suppressHydrationWarning>
                       <SidebarMenuSub>
                         {item.items?.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>

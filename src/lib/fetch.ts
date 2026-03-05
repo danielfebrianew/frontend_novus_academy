@@ -7,19 +7,19 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = `HTTP error! status: ${response.status}`;
-    
+
     try {
       const errorJson = JSON.parse(errorText);
       errorMessage = errorJson.message || errorMessage;
     } catch {
       errorMessage = errorText || errorMessage;
     }
-    
+
     throw new Error(errorMessage);
   }
 
   const contentType = response.headers.get("content-type");
-  
+
   if (contentType && contentType.includes("application/json")) {
     return response.json();
   } else {
@@ -29,12 +29,12 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 };
 
 const fetchWithDefaults = async (
-  url: string, 
+  url: string,
   options: RequestInit = {},
   retryCount: number = 0
 ): Promise<Response> => {
   const token = authService.getAccessToken();
-  
+
   const defaultOptions: RequestInit = {
     credentials: 'include',
     headers: {
@@ -44,7 +44,7 @@ const fetchWithDefaults = async (
     },
   };
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
+  let response = await fetch(`${API_BASE_URL}${url}`, {
     ...defaultOptions,
     ...options,
     headers: {
@@ -56,7 +56,8 @@ const fetchWithDefaults = async (
   if (response.status === 401 && retryCount === 0) {
     try {
       await authService.refresh();
-      return fetchWithDefaults(url, options, retryCount + 1);
+      // Retry request with resolved token
+      response = await fetchWithDefaults(url, options, retryCount + 1);
     } catch {
       if (typeof window !== "undefined" && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
@@ -115,8 +116,8 @@ export const apiService = {
   upload: async <T>(url: string, formData: FormData, config?: RequestInit) => {
     const token = authService.getAccessToken();
     const { headers, ...restConfig } = config || {};
-    
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+
+    let response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -126,17 +127,38 @@ export const apiService = {
       ...restConfig,
     });
 
+    if (response.status === 401) {
+      try {
+        await authService.refresh();
+        const newToken = authService.getAccessToken();
+        response = await fetch(`${API_BASE_URL}${url}`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            ...(newToken && { Authorization: `Bearer ${newToken}` }),
+          },
+          body: formData,
+          ...restConfig,
+        });
+      } catch {
+        if (typeof window !== "undefined" && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        throw new Error('Session expired');
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = `HTTP error! status: ${response.status}`;
-      
+
       try {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.message || errorMessage;
       } catch {
         errorMessage = errorText || errorMessage;
       }
-      
+
       throw new Error(errorMessage);
     }
 

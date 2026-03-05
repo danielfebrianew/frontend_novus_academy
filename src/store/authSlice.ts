@@ -7,6 +7,15 @@ interface User {
   name: string
   email: string
   avatar?: string
+  credits?: number
+  userLevelId?: number | null
+  paketId?: number | null
+  userWallet?: number | null
+  userBonus?: number | null
+  userPoint?: number | null
+  userStatus?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface AuthState {

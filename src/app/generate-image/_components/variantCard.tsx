@@ -5,10 +5,10 @@ import { Download, X, ChevronDown, ExternalLink } from "lucide-react";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ImageVariant } from "../_types/index";
+import { ImageVariant } from "../_types";
 
 interface VariantCardProps {
-  variant: ImageVariant; 
+  variant: ImageVariant;
   onDownload: (url: string, num: number) => void;
 }
 
@@ -32,7 +32,7 @@ export function VariantCard({ variant, onDownload }: VariantCardProps) {
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          
+
           {/* Overlay Buttons */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
             <Button
@@ -64,7 +64,7 @@ export function VariantCard({ variant, onDownload }: VariantCardProps) {
 
       {/* ─── Footer Section ─── */}
       <CardFooter className="p-3 bg-white flex flex-col items-start gap-3 flex-grow">
-        
+
         {/* Title & Meta */}
         <div className="w-full flex justify-between items-start gap-2">
           <div className="flex flex-col">

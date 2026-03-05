@@ -11,6 +11,7 @@ import { useSelector } from "react-redux";
 // Hooks
 import { useVideoGeneration } from "./_hooks/useVideoGeneration";
 import { useCountLimits } from "./_hooks/useCountLimits";
+import { RootState } from "@/store/store";
 
 // Views
 import { StepUpload } from "./_views/StepUpload";
@@ -25,13 +26,14 @@ export default function VideoGeneratorPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [readyFiles, setReadyFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   useEffect(() => setIsMounted(true), []);
 
   // Redux state
   const { step, loading, productName } = useSelector(
     (state: { videoGenerator: VideoGeneratorState }) => state.videoGenerator
   );
+  const credits = useSelector((state: RootState) => state.auth.user?.credits || 0);
 
   // Custom hooks
   const { countLimits } = useCountLimits();
@@ -59,6 +61,7 @@ export default function VideoGeneratorPage() {
           <StepReview
             countLimits={countLimits}
             onGenerateVideo={handleGenerateVideo}
+            credits={credits}
           />
         )}
 

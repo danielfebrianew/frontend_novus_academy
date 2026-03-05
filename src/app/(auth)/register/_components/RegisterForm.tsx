@@ -1,15 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { authService } from "@/lib/authService"
 import toast from "react-hot-toast"
-import { useDispatch } from "react-redux"
-import { setUser, setAccessToken } from "@/store/authSlice"
+import { apiService } from "@/lib/fetch"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,65 +29,42 @@ import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
 
 const formSchema = z.object({
+  name: z.string().min(2, "Nama minimal 2 karakter"),
   email: z.email("Email tidak valid"),
   password: z.string().min(6, "Password minimal 6 karakter"),
 })
 
-export function LoginForm() {
-  const dispatch = useDispatch()
-  const searchParams = useSearchParams()
+export function RegisterForm() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    if (searchParams.get('expired') === 'true') {
-      toast.error('Sesi login telah berakhir. Silakan login ulang.', { duration: 5000 })
-    }
-  }, [searchParams])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    const loadingToastId = toast.loading("Sedang memverifikasi akun...")
+    const loadingToast = toast.loading("Mendaftarkan akun...")
 
     try {
-      const user = await authService.login(values.email, values.password)
-      const accessToken = authService.getAccessToken()
+      await apiService.post("/api/v1/auth/register", values)
 
-      dispatch(setUser(user))
-      if (accessToken) dispatch(setAccessToken(accessToken))
+      toast.dismiss(loadingToast)
+      toast.success("Akun berhasil dibuat! Silakan login.")
 
-      toast.dismiss(loadingToastId)
-      toast.success(`Selamat datang, ${user.name || 'User'}!`)
+      router.push("/login")
 
-      // Hard redirect setelah login — sama seperti logout,
-      // biar Redux + cookie state fresh dari awal
-      window.location.href = '/generate-video'
+    } catch (error: any) {
+      console.error("Register Error:", error);
+      toast.dismiss(loadingToast)
 
-    } catch (error: unknown) {
-      toast.dismiss(loadingToastId)
-
-      let errorMessage = "Terjadi kesalahan pada server."
-
-      if (error instanceof Error) {
-        const msg = error.message
-        if (msg.includes("401") || msg.includes("400")) {
-          errorMessage = "Email atau password salah."
-        } else if (msg.includes("429")) {
-          errorMessage = "Terlalu banyak percobaan. Coba lagi nanti."
-        } else if (msg.includes("500")) {
-          errorMessage = "Server sedang bermasalah. Hubungi admin."
-        } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
-          errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet."
-        } else {
-          errorMessage = msg
-        }
-      }
-
-      toast.error(errorMessage, { duration: 4000 })
+      const errorMessage = error.response?.data?.message || "Terjadi kesalahan saat mendaftar"
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -98,12 +73,27 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Login</CardTitle>
-        <CardDescription>Masuk untuk mengakses dashboard.</CardDescription>
+        <CardTitle>Daftar Akun Baru</CardTitle>
+        <CardDescription>Buat akun untuk mulai generate AI.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Lengkap</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="email"
@@ -111,12 +101,13 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="admin@example.com" {...field} />
+                    <Input placeholder="john@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="password"
@@ -130,17 +121,18 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
+
             <Button type="submit" className="w-full bg-blue-600 text-white" disabled={isLoading}>
-              {isLoading ? "Loading..." : "Masuk"}
+              {isLoading ? "Loading..." : "Daftar"}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-gray-600">
-          Belum punya akun?{" "}
-          <Link href="/register" className="text-blue-600 hover:underline">
-            Daftar sekarang
+          Sudah punya akun?{" "}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Login di sini
           </Link>
         </p>
       </CardFooter>

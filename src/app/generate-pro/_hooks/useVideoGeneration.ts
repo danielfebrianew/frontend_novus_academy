@@ -16,7 +16,7 @@ import { FACE_CHARACTER_VALUE_MAP } from '../_utils/constants';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 8_000;
-const MAX_POLL_ATTEMPTS = 30;
+const MAX_POLL_ATTEMPTS = 45; // 45 * 8s = 6 minutes
 const PROGRESS_STORAGE_KEY = 'novus_pro_progress';
 
 /**
@@ -24,15 +24,15 @@ const PROGRESS_STORAGE_KEY = 'novus_pro_progress';
  *
  *   1-10%  → 1% per detik (10s total, fase upload)
  *   10-15% → 1% per 1.5 detik (7.5s total)
- *   15-90% → 1% per 1 detik (75s total)
- *   90-99% → 1% per 2 detik (18s total)
+ *   15-90% → 1% per 2 detik (150s total)
+ *   90-99% → 1% per 2.25 detik (20.25s total)
  *   99%    → stuck, nunggu polling confirm
  *   done   → loncat ke 100% (snap saat polling success)
  */
 const PROGRESS_STAGES: { targetProgress: number; intervalMs: number }[] = [
   { targetProgress: 10, intervalMs: 1_000 },   // 1% per detik
-  { targetProgress: 90, intervalMs: 1_000 },   // 1% per 1 detik
-  { targetProgress: 99, intervalMs: 2_000 },   // 1% per 2 detik
+  { targetProgress: 90, intervalMs: 2_000 },   // 1% per 2 detik
+  { targetProgress: 99, intervalMs: 2_250 },   // 1% per 2.25 detik
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ export function AppHeader() {
     name: user?.username || user?.name || 'Guest',
     email: user?.email || '',
     avatar: user?.avatar || '',
+    credits: user?.credits || 0,
     initials: user?.username ? user.username.substring(0, 2).toUpperCase() : 'CN',
   };
 
@@ -46,12 +47,16 @@ export function AppHeader() {
       <SidebarTrigger />
       <span className="text-sm font-semibold text-slate-700">Novus Studio</span>
       <div className="ml-auto flex items-center gap-3">
+        <div suppressHydrationWarning className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-semibold border border-blue-100">
+          <span className="text-xs font-normal">Credits:</span>
+          <span>{userData.credits}</span>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center rounded-full px-2 py-1 hover:bg-slate-100 transition-colors">
-              <Avatar className="h-8 w-8 rounded-full">
-                <AvatarImage src={userData.avatar} alt={userData.name} />
-                <AvatarFallback className="rounded-full text-xs">{userData.initials}</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-full" suppressHydrationWarning>
+                <AvatarImage src={userData.avatar} alt={userData.name} suppressHydrationWarning />
+                <AvatarFallback className="rounded-full text-xs" suppressHydrationWarning>{userData.initials}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
@@ -71,6 +76,6 @@ export function AppHeader() {
         </DropdownMenu>
       </div>
       <Toaster position="top-center" />
-    </div>
+    </div >
   );
 }
